@@ -7,6 +7,11 @@ __pycache__/
 *.out
 */tests
 
+# solutions
+out
+sol.cpp
+sol
+
 # C extensions
 *.so
 
