@@ -1,0 +1,9 @@
+<title>Dodaj zadanie</title>
+<form method='post'>
+    {% csrf_token %}
+    Nazwa zadania: <input type='text' name='name'><br>
+    Skrót nazwy zadania (do 5 znaków): <input type='text' name='short'><br>
+    Limit pamięci (w MB): <input type='number' name='memlimit'><br>
+    Opis zadania: <textarea name='description' style='width:100%; height: 50%;'></textarea><br>
+    <button>Create</button>
+</form>

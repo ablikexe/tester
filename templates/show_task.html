@@ -1,0 +1,9 @@
+<title>{{ task.name }}</title>
+<div>{{ task.description |safe }}</div>
+<form method='post' action='/test/'>
+    {% csrf_token %}
+    <input type='hidden' name='short' value='{{ task.short }}'><br><br>
+    Rozwiązanie:<br>
+    <textarea name='code' style='width: 100%; height: 50%'></textarea><br>
+    <button>Testuj!</button>
+</form>

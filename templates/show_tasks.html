@@ -1,0 +1,5 @@
+<title>Zadania</title>
+<a href='/add_task/'>Dodaj zadanie</a><br><br>
+{% for task in tasks %}
+    <a href='/task/{{ task.short }}'>{{ task.name }}</a><br>
+{% endfor %}

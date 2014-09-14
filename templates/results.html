@@ -1,0 +1,15 @@
+<title>Wyniki</title>
+{% if error %}
+    <h1 style='color: #f00; background-color: #fdd'>{{ error }}</h1>
+{% else %}
+    <table border=1>
+        <tr>
+            <td>ID testu</td><td>Wynik</td><td>Czas</td><td>Test</td>
+        </tr>
+    {% for id, res, time in results %}
+        <tr>
+            <td>{{id}}</td><td style='width: 80%'>{{res}}</td><td>{{time}}</td><td><a href='/download_test/{{ short }}/{{ id }}'>Zobacz test</a></td>
+        </tr>
+    {% endfor %}
+    </table>
+{% endif %}
