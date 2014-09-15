@@ -71,3 +71,12 @@ def add_task(request):
     task.save()
     messages.success(request, 'Task created!')
     return redirect('/')
+
+def remove_task(request, short):
+    t = tasks.objects.filter(pk = short)
+    if len(t) == 0:
+        messages.warning(request, 'Wrong task!')
+    else:
+        os.system('rm -rf %s' % short)
+        t[0].delete()
+    return redirect('/')

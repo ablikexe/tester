@@ -1,5 +1,19 @@
+<html>
 <title>Zadania</title>
+<head>
+<style>
+.alert { width: 100%; padding: 10px 5px 10px 5px; font-size: 20px; font-weight: bold; text-align: center; }
+.warning { color: #f00; background-color: #fdd; }
+.success { color: #0f0; background-color: #dfd; }
+</style>
+</head>
+<body>
+{% for message in messages %}
+<p class='alert {{ message.tags}}'>{{ message }}</p>
+{% endfor %}
 <a href='/add_task/'>Dodaj zadanie</a><br><br>
 {% for task in tasks %}
     <a href='/task/{{ task.short }}'>{{ task.name }}</a><br>
 {% endfor %}
+</body>
+</html>
