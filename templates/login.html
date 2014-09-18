@@ -1,0 +1,37 @@
+{% load staticfiles %}
+<html>
+    <head>
+        <title>Zaloguj się</title>
+        <link rel="stylesheet" href="{%  static 'bootstrap.min.css' %}">
+        <script src="{% static 'jquery-2.1.1.min.js' %}"></script>
+        <style>
+            .alert { width: 100%; padding: 10px 5px 10px 5px; font-size: 20px; font-weight: bold; text-align: center; border-radius: 20px; }
+            .warning { color: #f00; background-color: #fdd; }
+            .errorlist {
+                color: #ff0000;
+                list-style-type: none;
+                font-weight: bold;
+            }
+        </style>
+        <script>
+            $(document).ready(function(){
+                $('input').addClass('form form-control');
+            });
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Zaloguj się</h1>
+            {% for message in messages %}
+                <p class='alert {{ message.tags}}'>{{ message }}</p>
+            {% endfor %}
+            <form method="POST">
+                {% csrf_token %}
+                <table class="table table-striped">
+                    {{ form }}
+                </table>
+                <button>Zaloguj się</button>
+            </form>
+        </div>
+    </body>
+</html>

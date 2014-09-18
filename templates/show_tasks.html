@@ -1,19 +1,31 @@
+{% load staticfiles %}
 <html>
-<title>Zadania</title>
-<head>
-<style>
-.alert { width: 100%; padding: 10px 5px 10px 5px; font-size: 20px; font-weight: bold; text-align: center; }
-.warning { color: #f00; background-color: #fdd; }
-.success { color: #0f0; background-color: #dfd; }
-</style>
-</head>
-<body>
-{% for message in messages %}
-<p class='alert {{ message.tags}}'>{{ message }}</p>
-{% endfor %}
-<a href='/add_task/'>Dodaj zadanie</a><br><br>
-{% for task in tasks %}
-    <a href='/task/{{ task.short }}'>{{ task.name }}</a><br>
-{% endfor %}
-</body>
+    <head>
+        <title>Zadania</title>
+        <link rel="stylesheet" href="{%  static 'bootstrap.min.css' %}">
+        <style>
+            .alert { width: 100%; padding: 10px 5px 10px 5px; font-size: 20px; font-weight: bold; text-align: center; border-radius: 20px; }
+            .warning { color: #f00; background-color: #fdd; }
+            .success { color: #0f0; background-color: #dfd; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Sprawdzaczka I LO w Lublinie</h1>
+            {% if user.is_authenticated %}
+                <p>Hej, {{ user.username }}!</p>
+            {% else %}
+                <p><a href="/login">Zaloguj się!</a></p>
+            {% endif %}
+            {% for message in messages %}
+                <p class='alert {{ message.tags}}'>{{ message }}</p>
+            {% endfor %}
+            <a href='/add_task/'>Dodaj zadanie</a><br><br>
+            <table class="table table-striped">
+                {% for task in tasks %}
+                    <tr><td><a href='/task/{{ task.clean_name }}'>{{ task.name }}</a></td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </body>
 </html>

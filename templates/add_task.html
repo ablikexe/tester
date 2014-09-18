@@ -1,27 +1,27 @@
-{%  load staticfiles %}
+{% load staticfiles %}
 <html>
-<head>
-    <title>Dodaj zadanie</title>
-    <link rel="stylesheet" href="{%  static 'bootstrap.min.css' %}">
-    <style>
-        .errorlist {
-            color: #ff0000;
-            list-style-type: none;
-            float: right;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Dodaj zadanie</h1>
-        <form method='post'>
-            {% csrf_token %}
-            <table class="table table-striped">
-                {{ form }}
-            </table>
-            <button>Dodaj zadanie</button>
-        </form>
-    </div>
-</body>
+    <head>
+        <title>Dodaj zadanie</title>
+        <link rel="stylesheet" href="{%  static 'bootstrap.min.css' %}">
+        <style>
+            .errorlist {
+                color: #ff0000;
+                list-style-type: none;
+                float: right;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Dodaj zadanie</h1>
+            <form method='post' enctype='multipart/form-data'>
+                {% csrf_token %}
+                <table class="table table-striped">
+                    {{ form }}
+                </table>
+                <button>Dodaj zadanie</button>
+            </form>
+        </div>
+    </body>
 </html>

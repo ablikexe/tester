@@ -9,3 +9,8 @@ class AddTaskForm(forms.Form):
     author_solution = forms.FileField(label=u'Rozwiązanie wzorcowe', required=False)
     generator = forms.FileField(label=u'Program generujący testy (opcjonalne)', required=False)
     checker = forms.FileField(label=u'Program sprawdzający poprawność wyniku (opcjonalne)', required=False)
+
+
+class LoginForm(forms.Form):
+    username = forms.CharField(label=u'Nazwa użytkownika', max_length=30)
+    password = forms.CharField(label=u'Hasło', widget=forms.PasswordInput)
