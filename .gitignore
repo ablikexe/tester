@@ -12,6 +12,9 @@ out
 sol.cpp
 sol
 
+# pyCharm
+.idea
+
 # C extensions
 *.so
 
