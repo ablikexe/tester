@@ -3,7 +3,7 @@ from django.contrib.auth.models import *
 
 class Task(models.Model):
     name = models.CharField(max_length=100)
-    clean_name = models.CharField(max_length=100)
+    clear_name = models.CharField(max_length=100)
     memlimit = models.IntegerField()
     description = models.TextField()
     author_solution = models.TextField()

@@ -1,0 +1,47 @@
+{% load staticfiles %}
+<html>
+    <head>
+        <title>{% block title %}Sprawdzarka I LO w Lublinie{% endblock %}</title>
+        <link rel="stylesheet" href="{%  static 'bootstrap.min.css' %}">
+        <style>
+            .alert { width: 100%; padding: 10px 5px 10px 5px; font-size: 20px; font-weight: bold; text-align: center; border-radius: 20px; }
+            .warning { color: #ff0000; background-color: #ffdddd; }
+            .success { color: #00ee000; background-color: #ddffdd; }
+            .navlist { padding: 10px 20px 10px 0px; display: inline; }
+            .navlist li {
+                display: inline;
+                list-style-type: none;
+                padding-right: 10px;
+                padding-left: 10px;
+            }
+            .errorlist {
+                color: #ff0000;
+                list-style-type: none;
+                float: right;
+                font-weight: bold;
+            }
+        </style>
+        {% block head %}{% endblock %}
+    </head>
+    <body>
+        <div style="margin: 10 50 10 50; background-color: #eeeeee; border-radius: 10px;">
+            <ul class="navlist">
+                <li><a href="/">Strona główna</a></li>
+            <!--</ul>
+            <ul class="navlist" style="text-align: right;">-->
+                 {% if user.is_authenticated %}
+                     <li><a href="/add_task">Dodaj zadanie</a></li>
+                     <li><a href="/logout">Wyloguj się</a></li>
+                 {% else %}
+                     <li><a href="/login">Zaloguj się</a></li>
+                 {% endif %}
+            </ul>
+        </div>
+        <div class="container" style="margin-top: 10px">
+            {% for message in messages %}
+                <p class='alert {{ message.tags}}'>{{ message }}</p>
+            {% endfor %}
+            {% block content %}{% endblock %}
+        </div>
+    </body>
+</html>

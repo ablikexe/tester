@@ -1,7 +1,7 @@
 # coding: utf8
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import *
+import django.contrib.auth as auth
 from django.contrib.auth.decorators import login_required
 from tester.models import *
 from django.http import HttpResponse
@@ -23,6 +23,12 @@ def clear(name):
     return ''.join(filter(allowed.__contains__, name))
 
 
+def save_file(file, path):
+    with open(path, 'wb+') as f:
+        for chunk in file.chunks():
+            f.write(chunk)
+
+
 def show_tasks(request):
     return render(request, 'show_tasks.html', {'tasks': Task.objects.all()})
 
@@ -41,18 +47,27 @@ def login(request):
         return render(request, 'login.html', {'form': LoginForm()})
 
     form = LoginForm(request.POST)
+    print 'Logging in: ', form
     if not form.is_valid():
         return render(request, 'login.html', {'form': form})
+    data = form.cleaned_data
 
-    user = authenticate(username=form['username'], password=form['password'])
+    user = auth.authenticate(username=data['username'], password=data['password'])
+    print data['username'], data['password'], user
     if user is None:
         messages.warning(request, 'Nieprawidłowa nazwa użytkownika lub hasło!')
         return render(request, 'login.html', {'form': form})
     if not user.is_active:
         messages.warning(request, 'To konto jest nieaktywne!')
         return render(request, 'login.html', {'form': form})
-    login(request, user)
+    auth.login(request, user)
     messages.success(request, 'Zalogowano pomyślnie!')
+    return redirect('/')
+
+def logout(request):
+    if request.user.is_authenticated():
+        auth.logout(request)
+        messages.success(request, "Wylogowano pomyślnie!")
     return redirect('/')
 
 @login_required
@@ -72,27 +87,30 @@ def add_task(request):
     if request.method != 'POST':
         return render(request, 'add_task.html', {'form': AddTaskForm()})
 
-    print request.FILES
     form = AddTaskForm(request.POST, request.FILES)
     if not form.is_valid():
         return render(request, 'add_task.html', {'form': form})
 
     data = form.cleaned_data
-    clean_name = clear(data['name'])
+    clear_name = data['clear_name'] = clear(data['name'])
 
-    if Task.objects.filter(clean_name=clean_name):
+    if Task.objects.filter(clear_name=clear_name):
         messages.warning(request, u'Zadanie o tej nazwie już istnieje!')
         return render(request, 'add_task.html', {'form': form})
 
-    os.system('mkdir %s' % os.path.join(TASKS_DIR, clean_name))
-    with open(os.path.join(TASKS_DIR, clean_name, 'info'), 'w') as f:
+    os.system('mkdir %s' % os.path.join(TASKS_DIR, clear_name))
+    with open(os.path.join(TASKS_DIR, clear_name, 'info'), 'w') as f:
         f.write('Nazwa zadania: %s\n' % data['name'].encode('utf-8'))
         f.write('Limit pamięci: %d\n' % data['memlimit'])
         f.write('Autor: %s\n' % request.user)
-    print request.user
     data['author'] = request.user
 
-    print request.FILES
+    data['description'] = data['description'].read()
+    for f in ('author_solution', 'generator', 'checker'):
+        if f in request.FILES:
+            path = os.path.join(TASKS_DIR, clear_name, request.FILES[f].name)
+            save_file(request.FILES[f], path)
+            data[f] = path
 
     task = Task(**data)
     task.save()
