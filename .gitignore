@@ -18,6 +18,9 @@ sol
 # C extensions
 *.so
 
+# database
+db.sqlite3
+
 # Distribution / packaging
 .Python
 venv/

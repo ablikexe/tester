@@ -43,9 +43,11 @@
                      <li><a href="/manage_tasks">Zarządzaj zadaniami</a></li>
                 {% endif %}
                  {% if user.is_authenticated %}
+		     <li>Zalogowany: <b>{{ user.username }}</b></li>
                      <li><a href="/logout">Wyloguj się</a></li>
                  {% else %}
                      <li><a href="/login">Zaloguj się</a></li>
+		     <li><a href="/signup">Załóż konto</a></li>
                  {% endif %}
             </ul>
         </div>

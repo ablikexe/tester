@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.models import User
 from tester.models import *
 from django.http import HttpResponse
 from django.core.servers.basehttp import FileWrapper
@@ -42,9 +43,32 @@ def show_task(request, clear_name):
         return redirect('/')
     return render(request, 'show_task.html', {'task': tasks[0]})
 
+def signup(request):
+    if request.method != 'POST':
+        return render(request, 'signup.html', {'form' : SignupForm()})
+
+    form = SignupForm(request.POST)
+    if not form.is_valid():
+        return render(request, 'signup.html', {'form' : SignupForm ()})
+
+    data = form.cleaned_data
+    try:
+        u = User.objects.get (username=data['username'])
+        form.add_error ('username', 'Istnieje już taki użytkownik')
+        return render(request, 'signup.html', {'form' : form})
+    except:
+        pass
+
+    if data['pass1'] != data['pass2']:
+        form.add_error ('pass1', 'Hasła nie zgadzają się')
+        return render(request, 'signup.html', {'form' : form})
+
+    u = User.objects.create_user (data['username'], data['email'], data['pass1'])
+    messages.success (request, "Użytkownik utwożony pomyślnie")
+    return redirect("login.html")
+
 
 def login(request):
-
     if request.method != 'POST':
         return render(request, 'login.html', {'form': LoginForm()})
 

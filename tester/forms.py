@@ -24,3 +24,9 @@ class ChangeTaskForm(forms.Form):
 class LoginForm(forms.Form):
     username = forms.CharField(label=u'Nazwa użytkownika', max_length=30)
     password = forms.CharField(label=u'Hasło', widget=forms.PasswordInput)
+
+class SignupForm(forms.Form):
+    username = forms.CharField(label=u'Nazwa użytkownika', max_length=30)
+    email = forms.CharField(label=u'Adres e-mail') #widget=forms.EmailInput nie wygląda tak dobże
+    pass1 = forms.CharField(label=u'Hasło', widget=forms.PasswordInput)
+    pass2 = forms.CharField(label=u'Powtórz hasło', widget=forms.PasswordInput)
