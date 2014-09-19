@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Zarządzanie zadaniem - {{ task.name }}{% endblock %}
+
+{% block content %}
+    <h2>Zarządzanie zadaniem - {{ task.name }}</h2>
+    <form method='POST' enctype='multipart/form-data'>
+        {% csrf_token %}
+        <table class="table table-striped">
+            {{ form }}
+        </table>
+        <button>Zmień dane</button>
+    </form>
+{% endblock %}
