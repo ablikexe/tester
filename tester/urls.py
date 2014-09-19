@@ -7,6 +7,7 @@ urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls)),
     url(r'^login', 'tester.views.login'),
+    url(r'^signup', 'tester.views.signup'),
     url(r'^logout', 'tester.views.logout'),
     url(r'^add_task', 'tester.views.add_task'),
     url(r'^manage_tasks', 'tester.views.manage_tasks'),
