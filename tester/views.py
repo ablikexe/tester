@@ -76,7 +76,7 @@ def logout(request):
 def download_test(request, test_id):
     test = Test.objects.filter(pk=test_id)
     if len(test) == 0:
-        messages.warning('Nieznany test!')
+        messages.warning(request, 'Nieznany test!')
         return redirect('/')
     file_path = test.input
     response = HttpResponse(FileWrapper(open(file_path, 'r')), content_type='application/force-download')
@@ -108,7 +108,7 @@ def add_task(request):
         f.write('Autor: %s\n' % request.user)
     data['author'] = request.user
 
-    data['description'] = data['description'].read()
+    data['description'] = request.FILES['description'].read()
     for f in ('author_solution', 'generator', 'checker'):
         if f in request.FILES:
             path = os.path.join(TASKS_DIR, clear_name, request.FILES[f].name)
@@ -124,6 +124,77 @@ def add_task(request):
 @user_passes_test(is_admin)
 def manage_tasks(request):
     return render(request, 'manage_tasks.html', {'tasks': Task.objects.all()})
+
+
+@user_passes_test(is_admin)
+def manage_task(request, task_id):
+    tasks = Task.objects.filter(pk=int(task_id))
+    if len(tasks) == 0:
+        messages.warning(request, 'Nieznane zadanie!')
+        return redirect('/manage_tasks')
+
+    task = tasks[0]
+    if request.method != 'POST':
+        initial = tasks[0].__dict__
+        form = ChangeTaskForm(initial=initial)
+        return render(request, 'manage_task.html', {'task': task, 'form': form})
+
+    form = ChangeTaskForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return render(request, 'manage_task.html', {'task': task, 'form': form})
+
+    data = form.cleaned_data
+    clear_name = data['clear_name'] = clear(data['name'])
+
+    if clear_name != task.clear_name:
+        if Task.objects.filter(clear_name=clear_name):
+            messages.warning(request, u'Zadanie o tej nazwie już istnieje!')
+            return render(request, 'manage_task.html', {'task': task, 'form': form})
+        os.system('mv %s %s' % (os.path.join(TASKS_DIR, task.clear_name), os.path.join(TASKS_DIR, clear_name)))
+
+    fields = ('name', 'clear_name', 'memlimit', 'author')
+    for field in fields:
+        if field not in data or not data[field]:
+            data[field] = getattr(task, field)
+
+    with open(os.path.join(TASKS_DIR, clear_name, 'info'), 'w') as f:
+        f.write('Nazwa zadania: %s\n' % data['name'].encode('utf-8'))
+        f.write('Limit pamięci: %d\n' % data['memlimit'])
+        f.write('Autor: %s\n' % data['author'])
+
+    for field in fields:
+        if field in data and data[field]:
+            setattr(task, field, data[field])
+
+    if 'description' in request.FILES:
+        task.description = request.FILES['description'].read()
+
+    for f in ('author_solution', 'generator', 'checker'):
+        if f in request.FILES:
+            oldpath = os.path.join(TASKS_DIR, clear_name, os.path.basename(getattr(task, f)))
+            path = os.path.join(TASKS_DIR, clear_name, request.FILES[f].name)
+            if oldpath != path:
+                os.system('rm %s' % oldpath)
+            save_file(request.FILES[f], path)
+            data[f] = path
+            setattr(task, f, path)
+
+    task.save()
+    messages.success(request, u'Zadanie zmodyfikowane pomyślnie!')
+    return redirect('/')
+
+
+@user_passes_test(is_admin)
+def manage_tests(request, task_id):
+    tasks = Task.objects.filter(pk=int(task_id))
+    if len(tasks) == 0:
+        messages.warning(request, 'Nieznane zadanie!')
+        return redirect('/manage_tasks')
+    task = tasks[0]
+    tests = Test.objects.filter(task=task)
+
+    if request.method != 'POST':
+        return render(request, 'manage_tests.html', {'task': task, 'tests': tests})
 
 
 @user_passes_test(is_admin)
