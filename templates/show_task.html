@@ -4,12 +4,16 @@
 
 {% block content %}
     <h2 style="text-align: center">{{ task.name }}</h2>
-    <div>{{ task.description |safe }}</div>
+    <div style="width: 100%; text-align: right;">
+        Autor: <b>{{ task.author }}</b><br>
+        Limit pamięci: <b>{{ task.memlimit }}MB</b>
+    </div>
+    <div style="margin-bottom: 20px">{{ task.description |safe }}</div>
     <form method='post' action='/test/'>
         {% csrf_token %}
-        <input type='hidden' name='short' value='{{ task.short }}'><br><br>
-        Rozwiązanie:<br>
-        <textarea name='code' style='width: 100%; height: 50%'></textarea><br><br>
-        <button>Testuj!</button>
+        <input type='hidden' name='task' value='{{ task.clear_name }}'>
+        <b>Rozwiązanie:</b><br>
+        <textarea name='code' style='width: 100%; height: 50%; margin-bottom: 10px;'></textarea>
+        <button>Wyślij</button>
     </form>
 {% endblock %}

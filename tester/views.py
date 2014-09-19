@@ -1,24 +1,26 @@
 # coding: utf8
 from django.shortcuts import render, redirect
 from django.contrib import messages
-import django.contrib.auth as auth
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import user_passes_test
 from tester.models import *
 from django.http import HttpResponse
 from django.core.servers.basehttp import FileWrapper
 from tester.settings import TASKS_DIR
 from tester.forms import *
 import os
-import time
 import string
+
+
+is_admin = lambda user: user.is_staff
+logged_in = lambda user: user.is_authenticated() and user.is_active
 
 
 def clear(name):
     allowed = string.ascii_lowercase + string.digits + '-'
     name = name.lower().replace(' ', '-')
-    polish = [u'ąćęłńóśźż',
-              u'acelnoszz']
-    for a, b in zip(*polish):
+    replace = [u'ąćęłńóśźż',
+               u'acelnoszz']
+    for a, b in zip(*replace):
         name = name.replace(a, b)
     return ''.join(filter(allowed.__contains__, name))
 
@@ -47,13 +49,11 @@ def login(request):
         return render(request, 'login.html', {'form': LoginForm()})
 
     form = LoginForm(request.POST)
-    print 'Logging in: ', form
     if not form.is_valid():
         return render(request, 'login.html', {'form': form})
     data = form.cleaned_data
 
     user = auth.authenticate(username=data['username'], password=data['password'])
-    print data['username'], data['password'], user
     if user is None:
         messages.warning(request, 'Nieprawidłowa nazwa użytkownika lub hasło!')
         return render(request, 'login.html', {'form': form})
@@ -62,7 +62,8 @@ def login(request):
         return render(request, 'login.html', {'form': form})
     auth.login(request, user)
     messages.success(request, 'Zalogowano pomyślnie!')
-    return redirect('/')
+    return redirect(request.GET.get('next', '/'))
+
 
 def logout(request):
     if request.user.is_authenticated():
@@ -70,7 +71,8 @@ def logout(request):
         messages.success(request, "Wylogowano pomyślnie!")
     return redirect('/')
 
-@login_required
+
+@user_passes_test(logged_in)
 def download_test(request, test_id):
     test = Test.objects.filter(pk=test_id)
     if len(test) == 0:
@@ -81,7 +83,8 @@ def download_test(request, test_id):
     response['Content-Length'] = os.path.getsize(file_path)
     return response
 
-@login_required
+
+@user_passes_test(is_admin)
 def add_task(request):
 
     if request.method != 'POST':
@@ -117,12 +120,21 @@ def add_task(request):
     messages.success(request, u'Zadanie utworzone pomyślnie!')
     return redirect('/')
 
-@login_required
+
+@user_passes_test(is_admin)
+def manage_tasks(request):
+    return render(request, 'manage_tasks.html', {'tasks': Task.objects.all()})
+
+
+@user_passes_test(is_admin)
 def remove_task(request, task_id):
     t = Task.objects.filter(pk=task_id)
     if len(t) == 0:
         messages.warning(request, u'Nieznane zadanie!')
     else:
-        os.system('rm -rf %s' % t.clear_name)
+        path = os.path.join(TASKS_DIR, t[0].clear_name)
+        if os.path.exists(path):
+            os.system('rm -rf %s' % path)
+        messages.success(request, u'Zadanie "%s" usunięte!' % t[0].name)
         t[0].delete()
-    return redirect('/')
+    return redirect('/manage_tasks')

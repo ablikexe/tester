@@ -3,6 +3,15 @@
     <head>
         <title>{% block title %}Sprawdzarka I LO w Lublinie{% endblock %}</title>
         <link rel="stylesheet" href="{%  static 'bootstrap.min.css' %}">
+        <script src="{% static 'jquery-2.1.1.min.js' %}"></script>
+        <script>
+            $(document).ready(function() {
+                $('input[type="text"]').addClass('form form-control');
+                $('input[type="number"]').addClass('form form-control');
+                $('input[type="password"]').addClass('form form-control');
+                $('button').addClass('btn');
+            });
+        </script>
         <style>
             .alert { width: 100%; padding: 10px 5px 10px 5px; font-size: 20px; font-weight: bold; text-align: center; border-radius: 20px; }
             .warning { color: #ff0000; background-color: #ffdddd; }
@@ -29,8 +38,11 @@
                 <li><a href="/">Strona główna</a></li>
             <!--</ul>
             <ul class="navlist" style="text-align: right;">-->
-                 {% if user.is_authenticated %}
+                 {% if user.is_staff %}
                      <li><a href="/add_task">Dodaj zadanie</a></li>
+                     <li><a href="/manage_tasks">Zarządzaj zadaniami</a></li>
+                {% endif %}
+                 {% if user.is_authenticated %}
                      <li><a href="/logout">Wyloguj się</a></li>
                  {% else %}
                      <li><a href="/login">Zaloguj się</a></li>
