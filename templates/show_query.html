@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Zobacz kolejke{% endblock %}
+
+{% block content %}
+    <h2>Zobacz kolejke</h2>
+    <table class="table table-striped">
+        <tr style="font-weight: bold;">
+		<td>Autor</td>
+		<td>Zadanie</td>
+		<td>Data</td>
+        </tr>
+        {% for q in query %}
+            <tr>
+	    	<td>{{q.solution.user.username}}</td>
+	    	<td>{{q.solution.task.name}}</td>
+	    	<td>{{q.solution.date}}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

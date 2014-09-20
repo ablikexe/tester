@@ -9,7 +9,7 @@
         Limit pamięci: <b>{{ task.memlimit }}MB</b>
     </div>
     <div style="margin-bottom: 20px">{{ task.description |safe }}</div>
-    <form method='post' action='/test/'>
+    <form method='post' action='/test/{{task_id}}'>
         {% csrf_token %}
         <input type='hidden' name='task' value='{{ task.clear_name }}'>
         <b>Rozwiązanie:</b><br>

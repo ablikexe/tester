@@ -28,4 +28,8 @@ class Solution(models.Model):
     user = models.ForeignKey(User)
     permissions = models.TextField()
     code = models.TextField()
+    date = models.DateTimeField()
     results = models.TextField()
+
+class Query(models.Model):
+    solution = models.ForeignKey(Solution)

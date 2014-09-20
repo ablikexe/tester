@@ -8,6 +8,9 @@ from django.http import HttpResponse
 from django.core.servers.basehttp import FileWrapper
 from tester.settings import TASKS_DIR
 from tester.forms import *
+from datetime import datetime
+from threading import Thread
+from time import sleep
 import os
 import string
 
@@ -15,6 +18,17 @@ import string
 is_admin = lambda user: user.is_staff
 logged_in = lambda user: user.is_authenticated() and user.is_active
 
+def testall():
+    while True:
+        q = Query.objects.all()
+        if len(q) == 0:
+            print ('no more solutions to check')
+            return
+        print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
+        #symulacja sprawdzania :P
+        sleep (10)
+        q[0].delete ()
+testthread = Thread(name='testing', target=testall)
 
 def clear(name):
     allowed = string.ascii_lowercase + string.digits + '-'
@@ -41,7 +55,7 @@ def show_task(request, clear_name):
     if len(tasks) == 0:
         messages.warning(request, 'Nieznane zadanie!')
         return redirect('/')
-    return render(request, 'show_task.html', {'task': tasks[0]})
+    return render(request, 'show_task.html', {'task': tasks[0], 'task_id': tasks[0].pk})
 
 
 def signup(request):
@@ -96,6 +110,26 @@ def logout(request):
         messages.success(request, "Wylogowano pomyślnie!")
     return redirect('/')
 
+@user_passes_test(logged_in)
+def test(request, task_id):
+    if request.method != 'POST':
+        return render(request, 'show_task.html', {'task_id': task_id})
+
+    task = Task.objects.filter(pk=task_id)
+    if len(task) == 0:
+        messages.warning(request, 'Nieznane zadanie')
+        return redirect('/')
+
+    code = request.POST['code']
+    sol = Solution (**{'code': code.encode ('utf-8'), 'user': request.user, 'task': task[0], 'date': datetime.now()})
+    sol.save()
+    que = Query (**{'solution': sol})
+    que.save()
+
+    if not testthread.isAlive():
+        testthread.start()
+
+    return redirect('/')
 
 @user_passes_test(logged_in)
 def download_test(request, test_id):
@@ -108,10 +142,25 @@ def download_test(request, test_id):
     response['Content-Length'] = os.path.getsize(file_path)
     return response
 
+@user_passes_test(logged_in)
+def show_solutions(request):
+    if request.user.is_staff:
+        solutions = Solution.objects.all ()
+    else:
+        solutions = Solution.objects.filter(user=request.user)
+    return render(request, 'show_solutions.html', {'solutions': solutions})
+
+@user_passes_test(logged_in)
+def show_query(request):
+    if request.user.is_staff:
+        query = Query.objects.all ()
+    else:
+        query = filter(lambda item: item in Solution.objects.filter (user=request.user), Query.objects.all())
+    return render(request, 'show_query.html', {'query': query})
+
 
 @user_passes_test(is_admin)
 def add_task(request):
-
     if request.method != 'POST':
         return render(request, 'add_task.html', {'form': AddTaskForm()})
 
