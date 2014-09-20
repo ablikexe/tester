@@ -5,11 +5,13 @@ from django.contrib.auth.decorators import user_passes_test
 from tester.models import *
 from django.http import HttpResponse
 from django.core.servers.basehttp import FileWrapper
+from django.forms.formsets import formset_factory
 from tester.settings import TASKS_DIR
 from tester.forms import *
 from datetime import datetime
 from threading import Thread
 from time import sleep
+from limits import *
 import os
 import string
 
@@ -136,7 +138,8 @@ def download_test(request, test_id):
     if len(test) == 0:
         messages.warning(request, 'Nieznany test!')
         return redirect('/')
-    file_path = test[0].input
+    task = test.task
+    file_path = os.path.join(TASKS_DIR, task.clear_name, 'tests', test[0].name + '.in')
     response = HttpResponse(FileWrapper(open(file_path, 'r')), content_type='application/force-download')
     response['Content-Length'] = os.path.getsize(file_path)
     return response
@@ -251,16 +254,40 @@ def manage_tests(request, task_id):
     task = tasks[0]
     tests = Test.objects.filter(task=task)
 
-    if request.method != 'POST':
-        return render(request, 'manage_tests.html', {'task': task, 'tests': tests})
+    change_test_formset = formset_factory(ChangeTestForm, extra=0, can_delete=True)
 
-    for test in tests[:]:
+    if request.method != 'POST':
+        formset = change_test_formset(initial=[test.__dict__ for test in tests])
+        return render(request, 'manage_tests.html', {'task': task, 'formset': formset})
+
+    formset = change_test_formset(request.POST, request.FILES)
+    if not formset.is_valid():
+        return render(request, 'manage_tests.html', {'task': task, 'formset': formset})
+
+    for test, form in zip(tests, formset):
+        print test
+        print form
+        '''
         if ('remove_%d' % test.id) in request.POST:
             test.delete()
         else:
-            test.points = int(request.POST['points_%d' % test.id])
-            test.timelimit = int(request.POST['timelimit_%d' % test.id])
+            try:
+                points = int(request.POST['points_%d' % test.id])
+                timelimit = int(request.POST['timelimit_%d' % test.id])
+                name = clear(request.POST['name_%d' % test.id])
+                assert points >= 0 and 0 < timelimit < MAX_TIMELIMIT and \
+                    20 >= len(name) > 0 == len(Test.objects.filter(name=name))
+            except:
+                continue
+            test.points = points
+            test.timelimit = timelimit
+            tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
+            os.system('mv %s.in %s.in' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
+            os.system('mv %s.out %s.out' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
+            test.name = name
+            test.save()'''
 
+    tests = Test.objects.filter(task=task)
     messages.success(request, 'Zmiany zastosowane')
     return render(request, 'manage_tests.html', {'task': task, 'tests': tests})
 
@@ -277,27 +304,29 @@ def add_test(request, task_id):
 
     form = AddTestForm(request.POST, request.FILES)
     if not form.is_valid():
-        return render(request, 'add_test.html', {'task': task, 'form': AddTestForm()})
+        return render(request, 'add_test.html', {'task': task, 'form': form})
 
     data = form.cleaned_data
     tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
     if not os.path.exists(tests_path):
         os.system('mkdir %s' % tests_path)  # zakładam że nie istnieje tylko folder "tests"
 
-    test = Test(task=task, timelimit=data['timelimit'], points=data['points'])
-    test.save()
+    name = clear(data['name'])
+    if len(Test.objects.filter(name=name)) > 0:
+        messages.warning(request, u'Test o podanej nazwie już istnieje!')
+        return render(request, 'add_test.html', {'task': task, 'form': form})
 
-    inpath = os.path.join(tests_path, '%d.in' % test.id)
-    save_file(request.FILES['input'], inpath)
-    test.input = inpath
+    try:
+        save_file(request.FILES['input'], os.path.join(tests_path, '%s.in' % name))
+        save_file(request.FILES['output'], os.path.join(tests_path, '%s.out' % name))
+    except:
+        messages.warning(request, u'Błąd w trakcie zapisywania testu!')
+        return render(request, 'add_test.html', {'task': task, 'form': form})
 
-    outpath = os.path.join(tests_path, '%d.out' % test.id)
-    save_file(request.FILES['output'], outpath)
-    test.output = outpath
+    Test(task=task, name=name, timelimit=data['timelimit'], points=data['points']).save()
 
-    test.save()
     messages.success(request, 'Utworzono test!')
-    return redirect('/manage_tasks/%d/tests' % task.id)
+    return redirect('/manage_task/%d/tests' % task.id)
 
 
 @user_passes_test(is_admin)
