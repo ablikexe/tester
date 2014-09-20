@@ -8,7 +8,7 @@ from django.core.servers.basehttp import FileWrapper
 from tester.settings import TASKS_DIR
 from tester.forms import *
 from datetime import datetime
-from threading import Thread
+from threading import Thread, Event
 from time import sleep
 import os
 import string
@@ -17,17 +17,22 @@ import string
 is_admin = lambda user: user.is_staff
 logged_in = lambda user: user.is_authenticated() and user.is_active
 
+taskevent = Event ()
 def testall():
     while True:
         q = Query.objects.all()
         if len(q) == 0:
             print ('no more solutions to check')
-            return
-        print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
-        #symulacja sprawdzania :P
-        sleep (10)
-        q[0].delete ()
+            taskevent.clear()
+            taskevent.wait ()
+        else:
+            print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
+            #symulacja sprawdzania :P
+            sleep (10)
+            q[0].delete ()
+
 testthread = Thread(name='testing', target=testall)
+testthread.daemon = True
 
 def clear(name):
     allowed = string.ascii_lowercase + string.digits + '-'
@@ -124,9 +129,10 @@ def test(request, task_id):
     sol.save()
     que = Query (**{'solution': sol})
     que.save()
-
+    
+    taskevent.set ()
     if not testthread.isAlive():
-        testthread.start()
+        testthread.start ()
 
     return redirect('/')
 
