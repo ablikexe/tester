@@ -43,28 +43,29 @@ def show_task(request, clear_name):
         return redirect('/')
     return render(request, 'show_task.html', {'task': tasks[0]})
 
+
 def signup(request):
     if request.method != 'POST':
-        return render(request, 'signup.html', {'form' : SignupForm()})
+        return render(request, 'signup.html', {'form': SignupForm()})
 
     form = SignupForm(request.POST)
     if not form.is_valid():
-        return render(request, 'signup.html', {'form' : SignupForm ()})
+        return render(request, 'signup.html', {'form': form})
 
     data = form.cleaned_data
     try:
-        u = User.objects.get (username=data['username'])
-        form.add_error ('username', 'Istnieje już taki użytkownik')
-        return render(request, 'signup.html', {'form' : form})
+        User.objects.get(username=data['username'])
+        form.add_error('username', 'Istnieje już taki użytkownik')
+        return render(request, 'signup.html', {'form': form})
     except:
         pass
 
     if data['pass1'] != data['pass2']:
-        form.add_error ('pass1', 'Hasła nie zgadzają się')
-        return render(request, 'signup.html', {'form' : form})
+        form.add_error('pass1', 'Hasła nie zgadzają się')
+        return render(request, 'signup.html', {'form': form})
 
-    u = User.objects.create_user (data['username'], data['email'], data['pass1'])
-    messages.success (request, "Użytkownik utwożony pomyślnie")
+    User.objects.create_user(data['username'], data['email'], data['pass1'])
+    messages.success(request, "Użytkownik utworzony pomyślnie")
     return redirect("login.html")
 
 
