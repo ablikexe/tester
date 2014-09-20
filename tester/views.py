@@ -184,7 +184,7 @@ def add_task(request):
         f.write('Autor: %s\n' % request.user)
 
     data['author'] = request.user
-    data['description'] = request.FILES['description'].read()
+    data['description'] = data['description'].read()
 
     task = Task(**data)
     task.save()
@@ -265,31 +265,34 @@ def manage_tests(request, task_id):
         return render(request, 'manage_tests.html', {'task': task, 'formset': formset})
 
     for test, form in zip(tests, formset):
-        print test
-        print form
-        '''
-        if ('remove_%d' % test.id) in request.POST:
+        data = form.cleaned_data
+        tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
+        if data['DELETE']:
+            os.system('rm {0}.in {0}.out'.format(os.path.join(tests_path, test.name)))
             test.delete()
         else:
-            try:
-                points = int(request.POST['points_%d' % test.id])
-                timelimit = int(request.POST['timelimit_%d' % test.id])
-                name = clear(request.POST['name_%d' % test.id])
-                assert points >= 0 and 0 < timelimit < MAX_TIMELIMIT and \
-                    20 >= len(name) > 0 == len(Test.objects.filter(name=name))
-            except:
-                continue
-            test.points = points
-            test.timelimit = timelimit
-            tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
-            os.system('mv %s.in %s.in' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
-            os.system('mv %s.out %s.out' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
-            test.name = name
-            test.save()'''
+            test.points = data['points']
+            test.timelimit = data['timelimit']
 
-    tests = Test.objects.filter(task=task)
+            name = clear(data['name'])
+            if name != test.name:
+                if len(Test.objects.filter(task=task, name=name)) > 0:
+                    messages.warning(request, u'Zmiana nazwy testu z %s na %s zakończona niepowodzeniem'
+                                              u'- nazwa zajęta' % (test.name, name))
+                    continue
+                os.system('mv %s.in %s.in' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
+                os.system('mv %s.out %s.out' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
+                test.name = name
+
+            if data['input'] is not None:
+                save_file(data['input'], os.path.join(tests_path, name + '.in'))
+            if data['output'] is not None:
+                save_file(data['output'], os.path.join(tests_path, name + '.out'))
+
+            test.save()
+
     messages.success(request, 'Zmiany zastosowane')
-    return render(request, 'manage_tests.html', {'task': task, 'tests': tests})
+    return redirect('/manage_task/%d/tests' % task.id)
 
 @user_passes_test(is_admin)
 def add_test(request, task_id):

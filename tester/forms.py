@@ -29,29 +29,27 @@ class ChangeTaskForm(AddTaskForm):
 
 
 class AddTestForm(forms.Form):
-    name = forms.CharField(label=u'Oznaczenie testu', max_length=20)
+    name = forms.CharField(label=u'Oznaczenie testu', min_length=1, max_length=20)
     input = forms.FileField(label=u'Dane wejściowe')
     output = forms.FileField(label=u'Poprawna odpowiedź')
     points = forms.IntegerField(label=u'Liczba punktów', min_value=0)
-    timelimit = forms.IntegerField(label=u'Limit czasu (w milisekundach)', min_value=1)
+    timelimit = forms.IntegerField(label=u'Limit czasu (w milisekundach)', min_value=1, max_value=MAX_TIMELIMIT)
 
     def clean_input(self):
         f = self.cleaned_data['input']
-        print f._size
-        if not f:
-            raise forms.ValidationError(u'To pole jest wymagane')
-        if f._size > MAX_INPUT_SIZE:
+        if f is not None and f._size > MAX_INPUT_SIZE:
             raise forms.ValidationError(u'Plik za duży')
         return f
 
     def clean_output(self):
         f = self.cleaned_data['output']
-        print f._size
-        if not f:
-            raise forms.ValidationError(u'To pole jest wymagane')
-        if f._size > MAX_OUTPUT_SIZE:
+        if f is not None and f._size > MAX_OUTPUT_SIZE:
             raise forms.ValidationError(u'Plik za duży')
         return f
+
+class ChangeTestForm(AddTestForm):
+    input = forms.FileField(label=u'Dane wejściowe', required=False)
+    output = forms.FileField(label=u'Poprawna odpowiedź', required=False)
 
 
 class LoginForm(forms.Form):
