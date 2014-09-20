@@ -14,8 +14,7 @@ class Task(models.Model):
 
 class Test(models.Model):
     task = models.ForeignKey(Task)
-    input = models.TextField()
-    output = models.TextField()
+    name = models.CharField(max_length=20)
     timelimit = models.IntegerField()
     points = models.IntegerField()
 

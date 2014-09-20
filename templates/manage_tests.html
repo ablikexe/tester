@@ -4,26 +4,17 @@
 
 {% block content %}
     <h2>Zarządzanie testami - {{ task.name }}</h2>
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
-        <table class="table table-striped">
-            <tr>
-                <td>ID testu</td>
-                <td>Limit czasu</td>
-                <td>Punkty</td>
-                <td>Pobierz</td>
-                <td>Usuń</td>
-            </tr>
-            {% for test in tests %}
-                <tr>
-                    <td>{{ test.id }}</td>
-                    <td><input type="number" name="timelimit_{{ test.id }}" min="1" value="{{ test.timelimit }}"></td>
-                    <td><input type="number" name="points_{{ test.id }}" min="0" value="{{ test.points }}"></td>
-                    <td><a href="/download_test/{{ test.id }}">Pobierz</a></td>
-                    <td><input type="checkbox" name="remove_{{ test.id }}"></td>
-                </tr>
-            {% endfor %}
-        </table>
-        <button>Zastosuj zmiany</button>
+        {{ formset.management_form }}
+        {% for form in formset %}
+            <table class="table table-bordered">
+                {{ form }}
+            </table>
+        {% endfor %}
+        <div class="right">
+            <button>Zastosuj zmiany</button>
+        </div>
     </form>
+    <a href="/manage_task/{{ task.id }}/tests/add">Dodaj test</a>
 {% endblock %}
