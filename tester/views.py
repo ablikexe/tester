@@ -2,7 +2,6 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
-from django.contrib.auth.models import User
 from tester.models import *
 from django.http import HttpResponse
 from django.core.servers.basehttp import FileWrapper
@@ -103,7 +102,7 @@ def download_test(request, test_id):
     if len(test) == 0:
         messages.warning(request, 'Nieznany test!')
         return redirect('/')
-    file_path = test.input
+    file_path = test[0].input
     response = HttpResponse(FileWrapper(open(file_path, 'r')), content_type='application/force-download')
     response['Content-Length'] = os.path.getsize(file_path)
     return response
@@ -131,14 +130,9 @@ def add_task(request):
         f.write('Nazwa zadania: %s\n' % data['name'].encode('utf-8'))
         f.write('Limit pamięci: %d\n' % data['memlimit'])
         f.write('Autor: %s\n' % request.user)
-    data['author'] = request.user
 
+    data['author'] = request.user
     data['description'] = request.FILES['description'].read()
-    for f in ('author_solution', 'generator', 'checker'):
-        if f in request.FILES:
-            path = os.path.join(TASKS_DIR, clear_name, request.FILES[f].name)
-            save_file(request.FILES[f], path)
-            data[f] = path
 
     task = Task(**data)
     task.save()
@@ -194,16 +188,6 @@ def manage_task(request, task_id):
     if 'description' in request.FILES:
         task.description = request.FILES['description'].read()
 
-    for f in ('author_solution', 'generator', 'checker'):
-        if f in request.FILES:
-            oldpath = os.path.join(TASKS_DIR, clear_name, os.path.basename(getattr(task, f)))
-            path = os.path.join(TASKS_DIR, clear_name, request.FILES[f].name)
-            if oldpath != path:
-                os.system('rm %s' % oldpath)
-            save_file(request.FILES[f], path)
-            data[f] = path
-            setattr(task, f, path)
-
     task.save()
     messages.success(request, u'Zadanie zmodyfikowane pomyślnie!')
     return redirect('/')
@@ -220,6 +204,51 @@ def manage_tests(request, task_id):
 
     if request.method != 'POST':
         return render(request, 'manage_tests.html', {'task': task, 'tests': tests})
+
+    for test in tests[:]:
+        if ('remove_%d' % test.id) in request.POST:
+            test.delete()
+        else:
+            test.points = int(request.POST['points_%d' % test.id])
+            test.timelimit = int(request.POST['timelimit_%d' % test.id])
+
+    messages.success(request, 'Zmiany zastosowane')
+    return render(request, 'manage_tests.html', {'task': task, 'tests': tests})
+
+@user_passes_test(is_admin)
+def add_test(request, task_id):
+    tasks = Task.objects.filter(pk=int(task_id))
+    if len(tasks) == 0:
+        messages.warning(request, 'Nieznane zadanie!')
+        return redirect('/manage_tasks')
+    task = tasks[0]
+
+    if request.method != 'POST':
+        return render(request, 'add_test.html', {'task': task, 'form': AddTestForm()})
+
+    form = AddTestForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return render(request, 'add_test.html', {'task': task, 'form': AddTestForm()})
+
+    data = form.cleaned_data
+    tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
+    if not os.path.exists(tests_path):
+        os.system('mkdir %s' % tests_path)  # zakładam że nie istnieje tylko folder "tests"
+
+    test = Test(task=task, timelimit=data['timelimit'], points=data['points'])
+    test.save()
+
+    inpath = os.path.join(tests_path, '%d.in' % test.id)
+    save_file(request.FILES['input'], inpath)
+    test.input = inpath
+
+    outpath = os.path.join(tests_path, '%d.out' % test.id)
+    save_file(request.FILES['output'], outpath)
+    test.output = outpath
+
+    test.save()
+    messages.success(request, 'Utworzono test!')
+    return redirect('/manage_tasks/%d/tests' % task.id)
 
 
 @user_passes_test(is_admin)

@@ -6,9 +6,6 @@ class Task(models.Model):
     clear_name = models.CharField(max_length=100)
     memlimit = models.IntegerField()
     description = models.TextField()
-    author_solution = models.TextField()
-    generator = models.TextField(null=True)
-    checker = models.TextField(null=True)
     author = models.ForeignKey(User)
 
     def __unicode__(self):

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Dodaj test - {{ task.name }}{% endblock %}
+
+{% block content %}
+    <h2>Dodaj test - {{ task.name }}</h2>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <table class="table table-striped">
+            {{ form }}
+        </table>
+        <button>Dodaj test</button>
+    </form>
+{% endblock %}

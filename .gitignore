@@ -18,8 +18,9 @@ sol
 # C extensions
 *.so
 
-# database
+# database and tasks
 db.sqlite3
+tasks
 
 # Distribution / packaging
 .Python
