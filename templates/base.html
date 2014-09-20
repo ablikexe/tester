@@ -40,8 +40,10 @@
                  {% if user.is_staff %}
                      <li><a href="/add_task">Dodaj zadanie</a></li>
                      <li><a href="/manage_tasks">Zarządzaj zadaniami</a></li>
-                 {% endif %}
+                {% endif %}
                  {% if user.is_authenticated %}
+                     <li><a href="/solutions">Zobacz zgłoszenia</a></li>
+                     <li><a href="/query">Zobacz kolejke</a></li>
 		             <li>Zalogowany: <b>{{ user.username }}</b></li>
                      <li><a href="/logout">Wyloguj się</a></li>
                  {% else %}

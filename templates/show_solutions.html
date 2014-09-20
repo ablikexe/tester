@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Zobacz zgłoszenia{% endblock %}
+
+{% block content %}
+    <h2>Zobacz zgłoszenia</h2>
+    <table class="table table-striped">
+        <tr style="font-weight: bold;">
+            <td>Autor</td>
+	    <td>Zadanie</td>
+	    <td>Data</td>
+        </tr>
+        {% for sol in solutions %}
+            <tr>
+	    	<td>{{sol.user.username}}</td>
+	    	<td>{{sol.task.name}}</td>
+	    	<td>{{sol.date}}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
