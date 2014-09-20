@@ -1,6 +1,6 @@
 # coding: utf-8
 from django import forms
-from limits import *
+from tester.limits import *
 
 
 class AddTaskForm(forms.Form):

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block title %}Rozwiązanie {{solution.task.name}}{% endblock %}
+
+{% block content %}
+    <h2>Rozwiązanie {{solution.task.name}}</h2>
+    <h4>{{solution.user.username}} - {{solution.date}}</h4>
+    <code style="display: block; width: 100%; min-height: 75%;"> {{codehtml}} </code>
+{% endblock %}

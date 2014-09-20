@@ -9,9 +9,10 @@ from django.forms.formsets import formset_factory
 from tester.settings import TASKS_DIR
 from tester.forms import *
 from datetime import datetime
+from django.utils.html import *
 from threading import Thread, Event
 from time import sleep
-from limits import *
+from tester.limits import *
 import os
 import string
 
@@ -158,12 +159,22 @@ def show_solutions(request):
         solutions = Solution.objects.filter(user=request.user)
     return render(request, 'show_solutions.html', {'solutions': solutions})
 
+def show_solution(request, solution_id):
+    solution = Solution.objects.filter (pk = solution_id)
+    if len(solution) == 0:
+        return redirect ("/show_solutions")
+    if ((not request.user.is_staff) and (solution[0].user != request.user)):
+        messages.warning(requsest, 'Brak uprawnień')
+        return redirect ("/show_solutions")
+
+    return render(request, 'show_solution.html', {'solution': solution[0], 'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>'))})
+
 @user_passes_test(logged_in)
 def show_query(request):
     if request.user.is_staff:
         query = Query.objects.all ()
     else:
-        query = filter(lambda item: item in Solution.objects.filter (user=request.user), Query.objects.all())
+        query = Query.objects.filter(solution__user = request.user)
     return render(request, 'show_query.html', {'query': query})
 
 

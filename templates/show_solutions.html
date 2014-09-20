@@ -9,12 +9,14 @@
             <td>Autor</td>
 	    <td>Zadanie</td>
 	    <td>Data</td>
+            <td> </td>
         </tr>
         {% for sol in solutions %}
             <tr>
 	    	<td>{{sol.user.username}}</td>
 	    	<td>{{sol.task.name}}</td>
 	    	<td>{{sol.date}}</td>
+                <td><a href="/show_solution/{{sol.pk}}">Szczeguły</a></td>
             </tr>
         {% endfor %}
     </table>
