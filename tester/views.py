@@ -28,15 +28,11 @@ def judge(sol):
     sol.status = PROCESSING
     with open('sol.cpp', 'w') as f:
         f.write(sol.code)
-    p = sp.Popen(['g++', 'sol.cpp', '-o', 'sol', '-static', '-lm', '-O2', '-std=c++11', '&>out'], stderr=sp.PIPE)   # albo c++0x
+    p = sp.Popen(['g++', 'sol.cpp', '-o', 'sol', '-static', '-lm', '-O2', '-std=c++11'], stderr=sp.PIPE)   # albo c++0x
     _, err = p.communicate()
     if p.returncode != 0:
         sol.status = COMPILATION_ERROR
-        f = open('out', 'r')
-	cerr = ""
-        for l in f:
-            cerr += l;
-        sol.results = cerr
+        sol.results = err
         sol.save()
         return
 
