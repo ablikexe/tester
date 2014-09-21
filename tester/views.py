@@ -27,10 +27,9 @@ def judge(sol):
     sol.status = PROCESSING
     with open('sol.cpp', 'w') as f:
         f.write(sol.code)
-    p = sp.Popen('g++ sol.cpp -o sol -static -lm -O2 -std=c++11', stderr=sp.PIPE, shell=True)   # albo c++0x
+    p = sp.Popen(['g++', 'sol.cpp', '-o', 'sol', '-static', '-lm', '-O2', '-std=c++11'], stderr=sp.PIPE)   # albo c++0x
     _, err = p.communicate()
     if p.returncode != 0:
-        print 'compilation error'
         sol.status = COMPILATION_ERROR
         sol.save()
         return
@@ -41,7 +40,7 @@ def judge(sol):
     for test in tests:
         test_path = os.path.join(TASKS_DIR, task.clear_name, 'tests', test.name)
         beg = time.time()
-        p = sp.Popen('./sol < %s.in > out' % test_path, shell=True)
+        p = sp.Popen('./sol', stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'))
         p.wait()
         t = 1000*(time.time() - beg)
         if t > test.timelimit:
@@ -50,7 +49,7 @@ def judge(sol):
             status, points = u'Błąd wykonania', 0
         else:
             try:
-                sp.check_call('diff -wB out %s.out' % test_path, shell=True)
+                sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path])
                 status, points = u'OK', test.points
             except sp.CalledProcessError:
                 status, points = u'Zła odpowiedź', 0
