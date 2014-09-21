@@ -11,6 +11,7 @@ from tester.forms import *
 from django.utils import timezone
 from django.utils.html import *
 from threading import Thread, Event
+import logging
 import time
 import os
 import json
@@ -21,9 +22,9 @@ import subprocess as sp
 is_admin = lambda user: user.is_staff
 logged_in = lambda user: user.is_authenticated() and user.is_active
 
-
 def judge(sol):
     print 'Judging!'
+    logging.info('judging solution [%d]' % (sol.pk))
     sol.status = PROCESSING
     with open('sol.cpp', 'w') as f:
         f.write(sol.code)
@@ -134,6 +135,7 @@ def signup(request):
 
     User.objects.create_user(data['username'], data['email'], data['pass1'])
     messages.success(request, "Użytkownik utworzony pomyślnie")
+    logging.info ('user %s created' % (data['username']))
     return redirect("login.html")
 
 
@@ -178,6 +180,7 @@ def test(request, task_id):
     code = request.POST['code']
     sol = Solution (**{'code': code.encode ('utf-8'), 'user': request.user, 'task': task[0], 'date': timezone.now()})
     sol.save()
+    logging.info ('solution [%d]  %s submitted by %s' % (sol.pk, sol.task.name, sol.user.username))
     que = Query (**{'solution': sol})
     que.save()
     
@@ -269,6 +272,7 @@ def add_task(request):
     task = Task(**data)
     task.save()
     messages.success(request, u'Zadanie utworzone pomyślnie!')
+    logging.info ('task [%d] %s created by %s' % (task.pk, task.name, request.user.username))
     return redirect('/')
 
 
@@ -322,6 +326,7 @@ def manage_task(request, task_id):
 
     task.save()
     messages.success(request, u'Zadanie zmodyfikowane pomyślnie!')
+    logging.info ('task [%d] %s modified by %s' % (task.pk, task.name, request.user.username))
     return redirect('/')
 
 
@@ -372,6 +377,7 @@ def manage_tests(request, task_id):
             test.save()
 
     messages.success(request, 'Zmiany zastosowane')
+    logging.info ('tests for task [%d] %s modyfied by %s' % (task.pk, task.name, request.user.username))
     return redirect('/manage_task/%d/tests' % task.id)
 
 @user_passes_test(is_admin)
@@ -409,6 +415,7 @@ def add_test(request, task_id):
     Test(task=task, name=name, timelimit=data['timelimit'], points=data['points']).save()
 
     messages.success(request, 'Utworzono test!')
+    logging.info ("tests for task [%d] %s created by %s" % (task.pk, task.name, request.user.username))
     return redirect('/manage_task/%d/tests' % task.id)
 
 
@@ -421,6 +428,7 @@ def remove_task(request, task_id):
         path = os.path.join(TASKS_DIR, t[0].clear_name)
         if os.path.exists(path):
             os.system('rm -rf %s' % path)
+	logging.info ("task [%d] %s deleted by %s" % (t[0].pk, t[0].name, request.user.username))
         messages.success(request, u'Zadanie "%s" usunięte!' % t[0].name)
         t[0].delete()
     return redirect('/manage_tasks')
