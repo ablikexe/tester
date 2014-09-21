@@ -6,6 +6,7 @@
     <h2>Rozwiązanie - {{solution.task.name}}</h2>
     <h4>{{solution.user.username}} - {{solution.date}}</h4>
     <div>
+    	{% if not cerr %}
         Wynik: {{ solution.points }}.<br>
         <table class="table table-striped">
             <tr>
@@ -22,6 +23,9 @@
                 </tr>
             {% endfor %}
         </table>
+	{% else %}
+	Compilation Error!<br>{{results}}
+	{%endif%}
     </div>
     <code style="display: block; width: 100%; min-height: 75%;"> {{codehtml}} </code>
 {% endblock %}

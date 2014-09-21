@@ -27,11 +27,16 @@ def judge(sol):
     sol.status = PROCESSING
     with open('sol.cpp', 'w') as f:
         f.write(sol.code)
-    p = sp.Popen('g++ sol.cpp -o sol -static -lm -O2 -std=c++11', stderr=sp.PIPE, shell=True)   # albo c++0x
+    p = sp.Popen('g++ sol.cpp -o sol -static -lm -O2 -std=c++11 &> out', stderr=sp.PIPE, shell=True)   # albo c++0x
     _, err = p.communicate()
     if p.returncode != 0:
         print 'compilation error'
         sol.status = COMPILATION_ERROR
+        f = open('out', 'r')
+	cerr = ""
+        for l in f:
+            cerr += l;
+        sol.results = cerr
         sol.save()
         return
 
@@ -213,12 +218,20 @@ def show_solution(request, solution_id):
     if (not request.user.is_staff) and (solution[0].user != request.user):
         messages.warning(request, u'Brak uprawnień')
         return redirect ("/show_solutions")
-
-    return render(request, 'show_solution.html', {
-                                                  'solution': solution[0],
-                                                  'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
-                                                  'results': json.loads(solution[0].results)
-                                                  })
+    if solution[0].status != COMPILATION_ERROR:
+        return render(request, 'show_solution.html', {
+                                                      'solution': solution[0],
+                                                      'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
+                                                      'results': json.loads(solution[0].results),
+                                                      'cerr': 0
+                                                      })
+    else:
+        return render(request, 'show_solution.html', {
+                                                      'solution': solution[0],
+                                                      'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
+                                                      'results': mark_safe(escape(solution[0].results).replace('\n', '<br>')),
+                                                      'cerr': 1
+                                                      })
 
 @user_passes_test(logged_in)
 def show_query(request):
