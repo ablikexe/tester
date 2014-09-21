@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Zobacz kolejke{% endblock %}
+{% block title %}Zobacz kolejkę{% endblock %}
 
 {% block content %}
-    <h2>Zobacz kolejke</h2>
+    <h2>Zobacz kolejkę</h2>
     <table class="table table-striped">
         <tr style="font-weight: bold;">
 		<td>Autor</td>
@@ -12,9 +12,10 @@
         </tr>
         {% for q in query %}
             <tr>
-	    	<td>{{q.solution.user.username}}</td>
-	    	<td>{{q.solution.task.name}}</td>
-	    	<td>{{q.solution.date}}</td>
+                <td>{{q.solution.user.username}}</td>
+                <td>{{q.solution.task.name}}</td>
+                <td>{{q.solution.date}}</td>
+                <td></td>
             </tr>
         {% endfor %}
     </table>

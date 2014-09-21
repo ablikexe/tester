@@ -1,6 +1,5 @@
 from django.contrib.auth.models import *
 
-
 class Task(models.Model):
     name = models.CharField(max_length=100)
     clear_name = models.CharField(max_length=100)
@@ -19,13 +18,22 @@ class Test(models.Model):
     points = models.IntegerField()
 
 
+UNKNOWN = 0
+PROCESSING = 1
+PROCESSED = 2
+COMPILATION_ERROR = 3
+
+
 class Solution(models.Model):
     task = models.ForeignKey(Task)
     user = models.ForeignKey(User)
     permissions = models.TextField()
     code = models.TextField()
+    status = models.IntegerField(default=UNKNOWN)
     date = models.DateTimeField()
     results = models.TextField()
+    points = models.IntegerField(default=0)
+
 
 class Query(models.Model):
     solution = models.ForeignKey(Solution)

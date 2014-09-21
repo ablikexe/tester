@@ -8,17 +8,60 @@ from django.core.servers.basehttp import FileWrapper
 from django.forms.formsets import formset_factory
 from tester.settings import TASKS_DIR
 from tester.forms import *
-from datetime import datetime
+from django.utils import timezone
 from django.utils.html import *
 from threading import Thread, Event
-from time import sleep
-from tester.limits import *
+import time
 import os
+import json
 import string
+import subprocess as sp
 
 
 is_admin = lambda user: user.is_staff
 logged_in = lambda user: user.is_authenticated() and user.is_active
+
+
+def judge(sol):
+    print 'Judging!'
+    sol.status = PROCESSING
+    with open('sol.cpp', 'w') as f:
+        f.write(sol.code)
+    p = sp.Popen('g++ sol.cpp -o sol -static -lm -O2 -std=c++11', stderr=sp.PIPE, shell=True)   # albo c++0x
+    _, err = p.communicate()
+    if p.returncode != 0:
+        print 'compilation error'
+        sol.status = COMPILATION_ERROR
+        sol.save()
+        return
+
+    task = sol.task
+    tests = Test.objects.filter(task=task)
+    res, total = [], 0
+    for test in tests:
+        test_path = os.path.join(TASKS_DIR, task.clear_name, 'tests', test.name)
+        beg = time.time()
+        p = sp.Popen('./sol < %s.in > out' % test_path, shell=True)
+        p.wait()
+        t = 1000*(time.time() - beg)
+        if t > test.timelimit:
+            status, points = u'Przekroczono limit czasu', 0
+        elif p.returncode != 0:
+            status, points = u'Błąd wykonania', 0
+        else:
+            try:
+                sp.check_call('diff -wB out %s.out' % test_path, shell=True)
+                status, points = u'OK', test.points
+            except sp.CalledProcessError:
+                status, points = u'Zła odpowiedź', 0
+        res.append((test.name, status, '%.3fs/%.3fs' % (0.001*t, 0.001*test.timelimit), '%d/%d' % (points, test.points)))
+        total += points
+
+    sol.status = PROCESSED
+    sol.results = json.dumps(res)
+    sol.points = total
+    sol.save()
+
 
 taskevent = Event ()
 def testall():
@@ -30,12 +73,12 @@ def testall():
             taskevent.wait ()
         else:
             print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
-            #symulacja sprawdzania :P
-            sleep (10)
+            judge(q[0].solution)
             q[0].delete ()
 
 testthread = Thread(name='testing', target=testall)
 testthread.daemon = True
+
 
 def clear(name):
     allowed = string.ascii_lowercase + string.digits + '-'
@@ -117,6 +160,7 @@ def logout(request):
         messages.success(request, "Wylogowano pomyślnie!")
     return redirect('/')
 
+
 @user_passes_test(logged_in)
 def test(request, task_id):
     if request.method != 'POST':
@@ -128,7 +172,7 @@ def test(request, task_id):
         return redirect('/')
 
     code = request.POST['code']
-    sol = Solution (**{'code': code.encode ('utf-8'), 'user': request.user, 'task': task[0], 'date': datetime.now()})
+    sol = Solution (**{'code': code.encode ('utf-8'), 'user': request.user, 'task': task[0], 'date': timezone.now()})
     sol.save()
     que = Query (**{'solution': sol})
     que.save()
@@ -138,6 +182,7 @@ def test(request, task_id):
         testthread.start ()
 
     return redirect('/')
+
 
 @user_passes_test(logged_in)
 def download_test(request, test_id):
@@ -151,23 +196,29 @@ def download_test(request, test_id):
     response['Content-Length'] = os.path.getsize(file_path)
     return response
 
+
 @user_passes_test(logged_in)
 def show_solutions(request):
     if request.user.is_staff:
         solutions = Solution.objects.all ()
     else:
         solutions = Solution.objects.filter(user=request.user)
-    return render(request, 'show_solutions.html', {'solutions': solutions})
+    return render(request, 'show_solutions.html', {'solutions': reversed(solutions)})
+
 
 def show_solution(request, solution_id):
     solution = Solution.objects.filter (pk = solution_id)
     if len(solution) == 0:
         return redirect ("/show_solutions")
-    if ((not request.user.is_staff) and (solution[0].user != request.user)):
-        messages.warning(requsest, 'Brak uprawnień')
+    if (not request.user.is_staff) and (solution[0].user != request.user):
+        messages.warning(request, u'Brak uprawnień')
         return redirect ("/show_solutions")
 
-    return render(request, 'show_solution.html', {'solution': solution[0], 'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>'))})
+    return render(request, 'show_solution.html', {
+                                                  'solution': solution[0],
+                                                  'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
+                                                  'results': json.loads(solution[0].results)
+                                                  })
 
 @user_passes_test(logged_in)
 def show_query(request):

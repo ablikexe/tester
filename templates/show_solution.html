@@ -3,7 +3,25 @@
 {% block title %}Rozwiązanie {{solution.task.name}}{% endblock %}
 
 {% block content %}
-    <h2>Rozwiązanie {{solution.task.name}}</h2>
+    <h2>Rozwiązanie - {{solution.task.name}}</h2>
     <h4>{{solution.user.username}} - {{solution.date}}</h4>
+    <div>
+        Wynik: {{ solution.points }}.<br>
+        <table class="table table-striped">
+            <tr>
+                <td>Test</td>
+                <td>Status</td>
+                <td>Czas wykonania</td>
+                <td>Liczba punktów</td>
+            </tr>
+            {% for r in results %}
+                <tr>
+                    {% for x in r %}
+                        <td>{{ x }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
     <code style="display: block; width: 100%; min-height: 75%;"> {{codehtml}} </code>
 {% endblock %}
