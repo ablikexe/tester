@@ -1,5 +1,6 @@
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from django.utils.crypto import get_random_string
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 TEMPLATE_DIRS = ( os.path.join(BASE_DIR, 'templates'), )
@@ -7,8 +8,13 @@ STATICFILES_DIRS = ( os.path.join(BASE_DIR, 'static'), )
 TASKS_DIR = os.path.join(BASE_DIR, 'tasks')
 LOGIN_URL = '/login'
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'h!6ht(jp@x72vykz+kzd^)2+o!4dulu941u@px6wsj!*rd*hoz'
+try:
+    from secret_key import SECRET_KEY
+except ImportError:
+    with open(os.path.join(BASE_DIR, 'secret_key.py'), 'w') as f:
+        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+        f.write('SECRET_KEY = "%s"' % get_random_string(50, chars))
+    from secret_key import SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

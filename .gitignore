@@ -15,6 +15,8 @@ sol
 # pyCharm
 .idea
 
+secret_key.py
+
 # C extensions
 *.so
 
