@@ -4,7 +4,7 @@ from tester.limits import *
 
 
 class AddTaskForm(forms.Form):
-    name = forms.CharField(label=u'Nazwa zadania', max_length=100)
+    name = forms.CharField(label=u'Nazwa zadania', max_length=100, required=False)
     memlimit = forms.IntegerField(label=u'Limit pamięci', min_value=1, max_value=1024)
     description = forms.fields.FileField(label=u'Treść zadania')
 

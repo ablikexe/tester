@@ -13,6 +13,7 @@ urlpatterns = patterns(
     url(r'^manage_tasks', 'tester.views.manage_tasks'),
     url(r'^manage_task/(?P<task_id>[0-9]+)$', 'tester.views.manage_task'),
     url(r'^manage_task/(?P<task_id>[0-9]+)/tests$', 'tester.views.manage_tests'),
+    url(r'^manage_task/(?P<task_id>[0-9]+)/tests/add_zip', 'tester.views.add_zip'),
     url(r'^manage_task/(?P<task_id>[0-9]+)/tests/add', 'tester.views.add_test'),
     url(r'^show_solutions', 'tester.views.show_solutions'),
     url(r'^show_solution/(?P<solution_id>[0-9]+)', 'tester.views.show_solution'),

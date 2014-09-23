@@ -15,6 +15,7 @@ import logging
 import time
 import os
 import signal
+import zipfile
 import json
 import string
 import subprocess as sp
@@ -145,11 +146,11 @@ def signup(request):
         return render(request, 'signup.html', {'form': form})
 
     if data['pass1'] != data['pass2']:
-        form.add_error('pass1', 'Hasła nie zgadzają się')
+        form.add_error('pass1', u'Hasła nie zgadzają się')
         return render(request, 'signup.html', {'form': form})
 
     User.objects.create_user(data['username'], data['email'], data['pass1'])
-    messages.success(request, "Użytkownik utworzony pomyślnie")
+    messages.success(request, u'Użytkownik utworzony pomyślnie')
     logging.info ('user %s created' % (data['username']))
     return redirect("login.html")
 
@@ -370,7 +371,7 @@ def manage_tests(request, task_id):
             if name != test.name:
                 if len(Test.objects.filter(task=task, name=name)) > 0:
                     messages.warning(request, u'Zmiana nazwy testu z %s na %s zakończona niepowodzeniem'
-                                              u'- nazwa zajęta' % (test.name, name))
+                                              u' - nazwa zajęta' % (test.name, name))
                     continue
                 os.system('mv %s.in %s.in' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
                 os.system('mv %s.out %s.out' % (os.path.join(tests_path, test.name), os.path.join(tests_path, name)))
@@ -423,6 +424,57 @@ def add_test(request, task_id):
 
     messages.success(request, 'Utworzono test!')
     logging.info ("tests for task [%d] %s created by %s" % (task.pk, task.name, request.user.username))
+    return redirect('/manage_task/%d/tests' % task.id)
+
+
+def add_zip(request, task_id):
+    tasks = Task.objects.filter(pk=int(task_id))
+    if len(tasks) == 0:
+        messages.warning(request, 'Nieznane zadanie!')
+        return redirect('/manage_tasks')
+    task = tasks[0]
+
+    if request.method != 'POST' or 'zip' not in request.FILE:
+        return render(request, 'add_zip.html', {'task': task})
+
+    tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
+    if not os.path.exists(tests_path):
+        os.system('mkdir %s' % tests_path)  # zakładam że nie istnieje tylko folder "tests"
+
+    created = 0
+    save_file(request.FILE['zip'], 'pack.zip')
+    try:
+        with zipfile.ZipFile('pack.zip') as f:
+            f.extractall(tests_path)
+            names = f.infolist()
+        if os.path.exists(os.path.join(tests_path, 'info')):
+            with open(os.path.join(tests_path, 'info'), 'r') as f:
+                for t in f.splitlines():
+                    name, timelimit, points = t.split()
+                    if len(Test.objects.filter(name=name)) > 0:
+                        t = Test.objects.get(name=name)
+                        t.timelimit, t.points = int(timelimit), int(points)
+                        t.save()
+                    else:
+                        Test(task=task, name=name, timelimit=int(timelimit), points=int(points)).save()
+                    created += 1
+        else:
+            rem_points = 100
+            rem_tasks = len(names) // 2
+            for name in names:
+                if len(Test.objects.filter(name=name)) > 0:
+                    t = Test.objects.get(name=name)
+                    t.timelimit, t.points = 1000, rem_points // rem_tasks
+                    t.save()
+                else:
+                    Test(task=task, name=name, timelimit=1000, points=rem_points/rem_tasks).save()
+                rem_tasks -= 1
+                created += 1
+    except:
+        messages.warning(request, u'Niepoprawny format paczki!')
+
+    messages.success(request, 'Utworzono %d test(y/ów)' % created)
+    logging.info ("tests pack for task [%d] %s created by %s" % (task.pk, task.name, request.user.username))
     return redirect('/manage_task/%d/tests' % task.id)
 
 
