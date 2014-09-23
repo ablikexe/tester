@@ -434,7 +434,7 @@ def add_zip(request, task_id):
         return redirect('/manage_tasks')
     task = tasks[0]
 
-    if request.method != 'POST' or 'zip' not in request.FILE:
+    if request.method != 'POST' or 'zip' not in request.FILES:
         return render(request, 'add_zip.html', {'task': task})
 
     tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
@@ -442,17 +442,17 @@ def add_zip(request, task_id):
         os.system('mkdir %s' % tests_path)  # zakładam że nie istnieje tylko folder "tests"
 
     created = 0
-    save_file(request.FILE['zip'], 'pack.zip')
+    save_file(request.FILES['zip'], 'pack.zip')
     try:
         with zipfile.ZipFile('pack.zip') as f:
             f.extractall(tests_path)
-            names = f.infolist()
+            names = map(lambda x: x.filename, f.infolist())
         if os.path.exists(os.path.join(tests_path, 'info')):
             with open(os.path.join(tests_path, 'info'), 'r') as f:
                 for t in f.splitlines():
                     name, timelimit, points = t.split()
-                    if len(Test.objects.filter(name=name)) > 0:
-                        t = Test.objects.get(name=name)
+                    if len(Test.objects.filter(task=task, name=name)) > 0:
+                        t = Test.objects.filter(task=task, name=name)[0]
                         t.timelimit, t.points = int(timelimit), int(points)
                         t.save()
                     else:
@@ -462,12 +462,16 @@ def add_zip(request, task_id):
             rem_points = 100
             rem_tasks = len(names) // 2
             for name in names:
-                if len(Test.objects.filter(name=name)) > 0:
-                    t = Test.objects.get(name=name)
+                if len(name) < 3 or name[-3:] != '.in':
+                    continue
+                name = name[:-3]
+                if len(Test.objects.filter(task=task, name=name)) > 0:
+                    t = Test.objects.filter(task=task, name=name)[0]
                     t.timelimit, t.points = 1000, rem_points // rem_tasks
                     t.save()
                 else:
                     Test(task=task, name=name, timelimit=1000, points=rem_points/rem_tasks).save()
+                rem_points -= rem_points // rem_tasks
                 rem_tasks -= 1
                 created += 1
     except:
