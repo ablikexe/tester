@@ -27,6 +27,7 @@ logged_in = lambda user: user.is_authenticated() and user.is_active
 def judge(sol):
     logging.info('judging solution [%d]' % (sol.pk))
     sol.status = PROCESSING
+    sol.save()
     with open('sol.cpp', 'w') as f:
         f.write(sol.code.encode('utf8'))
     p = sp.Popen(['g++', 'sol.cpp', '-o', 'sol', '-static', '-lm', '-O2', '-std=c++11'], stderr=sp.PIPE)   # albo c++0x
@@ -246,11 +247,7 @@ def show_solution(request, solution_id):
 
 @user_passes_test(logged_in)
 def show_query(request):
-    if request.user.is_staff:
-        query = Query.objects.all ()
-    else:
-        query = Query.objects.filter(solution__user = request.user)
-    return render(request, 'show_query.html', {'query': query})
+    return render(request, 'show_query.html', {'query': Query.objects.all()})
 
 
 @user_passes_test(is_admin)
