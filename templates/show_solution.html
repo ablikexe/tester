@@ -3,29 +3,39 @@
 {% block title %}Rozwiązanie {{solution.task.name}}{% endblock %}
 
 {% block content %}
-    <h2>Rozwiązanie - {{solution.task.name}}</h2>
-    <h4>{{solution.user.username}} - {{solution.date}}</h4>
+    <h2 style='text-align: center'>Rozwiązanie - {{solution.task.name}}</h2>
+    <h4 style='text-align: right'>{{solution.user.username}} - {{solution.date}}</h4>
     <div>
-    	{% if not cerr %}
-        Wynik: {{ solution.points }}.<br>
-        <table class="table table-striped">
-            <tr>
-                <td>Test</td>
-                <td>Status</td>
-                <td>Czas wykonania</td>
-                <td>Liczba punktów</td>
-            </tr>
-            {% for r in results %}
+    	{% ifequal solution.status 0 %}
+            <h4>Zgłoszenie oczekuje na sprawdzenie</h4>
+        {% endifequal %}
+    	{% ifequal solution.status 1 %}
+            <h4>Zgłoszenie jest w trakcie sprawdzania</h4>
+        {% endifequal %}
+        {% ifequal solution.status 3 %}
+	        <h4 style='color: #f00'>Błąd kompilacji!</h4>
+            <pre>{{ results }}</pre>
+	    {% endifequal %}
+        {% ifequal solution.status 2 %}
+            Wynik: {{ solution.points }}.<br>
+            <table class="table table-striped">
                 <tr>
-                    {% for x in r %}
-                        <td>{{ x }}</td>
-                    {% endfor %}
+                    <td>Test</td>
+                    <td>Status</td>
+                    <td>Czas wykonania</td>
+                    <td>Liczba punktów</td>
                 </tr>
-            {% endfor %}
-        </table>
-	{% else %}
-	Compilation Error!<br>{{results}}
-	{%endif%}
+                {% for r in results %}
+                    <tr>
+                        {% for x in r %}
+                            <td>{{ x }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+	    {% endifequal %}
     </div>
-    <code style="display: block; width: 100%; min-height: 75%;"> {{codehtml}} </code>
+    <!-- <code style="display: block; width: 100%; min-height: 75%;">{{ codehtml }}</code> -->
+    <h4>Kod źródłowy:</h4>
+    <pre>{{ solution.code }}</pre>
 {% endblock %}

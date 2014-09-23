@@ -10,10 +10,11 @@ from tester.settings import TASKS_DIR
 from tester.forms import *
 from django.utils import timezone
 from django.utils.html import *
-from threading import Thread, Event
+from threading import Thread, Event, Timer
 import logging
 import time
 import os
+import signal
 import json
 import string
 import subprocess as sp
@@ -23,39 +24,53 @@ is_admin = lambda user: user.is_staff
 logged_in = lambda user: user.is_authenticated() and user.is_active
 
 def judge(sol):
-    print 'Judging!'
     logging.info('judging solution [%d]' % (sol.pk))
     sol.status = PROCESSING
     with open('sol.cpp', 'w') as f:
-        f.write(sol.code)
+        f.write(sol.code.encode('utf8'))
     p = sp.Popen(['g++', 'sol.cpp', '-o', 'sol', '-static', '-lm', '-O2', '-std=c++11'], stderr=sp.PIPE)   # albo c++0x
     _, err = p.communicate()
     if p.returncode != 0:
         sol.status = COMPILATION_ERROR
-        sol.results = err
+        sol.results = json.dumps(err)
         sol.save()
         return
 
     task = sol.task
     tests = Test.objects.filter(task=task)
     res, total = [], 0
+    memlimits = ['ulimit', '-v', str(task.memlimit*1000000), '&&',
+                 'ulimit', '-Ss', 'unlimited', '&&']
     for test in tests:
         test_path = os.path.join(TASKS_DIR, task.clear_name, 'tests', test.name)
+        timelimit = ['ulimit', '-t', str(test.timelimit//1000+1), '&&']
         beg = time.time()
-        p = sp.Popen('./sol', stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'))
+        command = memlimits + timelimit + ['./supervisor', '-q', './sol']
+        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'), stderr=sp.PIPE, shell=True)
+        def kill():
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except:
+                pass
+        kill_timer = Timer(0.003*test.timelimit, kill)
+        kill_timer.start()
         p.wait()
+        if kill_timer:
+            kill_timer.cancel()
         t = 1000*(time.time() - beg)
         if t > test.timelimit:
             status, points = u'Przekroczono limit czasu', 0
+            t = -1
         elif p.returncode != 0:
             status, points = u'Błąd wykonania', 0
         else:
             try:
-                sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path])
+                sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path], stdout=sp.PIPE)
                 status, points = u'OK', test.points
             except sp.CalledProcessError:
                 status, points = u'Zła odpowiedź', 0
-        res.append((test.name, status, '%.3fs/%.3fs' % (0.001*t, 0.001*test.timelimit), '%d/%d' % (points, test.points)))
+        res.append((test.name, status, (('%.3fs' % (0.001*t)) if t>=0 else '?') + (' / %.3fs' % (0.001*test.timelimit)),
+                    '%d/%d' % (points, test.points)))
         total += points
 
     sol.status = PROCESSED
@@ -64,7 +79,7 @@ def judge(sol):
     sol.save()
 
 
-taskevent = Event ()
+taskevent = Event()
 def testall():
     while True:
         q = Query.objects.all()
@@ -174,15 +189,15 @@ def test(request, task_id):
         return redirect('/')
 
     code = request.POST['code']
-    sol = Solution (**{'code': code.encode ('utf-8'), 'user': request.user, 'task': task[0], 'date': timezone.now()})
+    sol = Solution(code=code.encode('utf-8'), user=request.user, task=task[0], date=timezone.now())
     sol.save()
     logging.info ('solution [%d]  %s submitted by %s' % (sol.pk, sol.task.name, sol.user.username))
-    que = Query (**{'solution': sol})
+    que = Query(solution=sol)
     que.save()
     
-    taskevent.set ()
+    taskevent.set()
     if not testthread.isAlive():
-        testthread.start ()
+        testthread.start()
 
     return redirect('/')
 
@@ -210,26 +225,18 @@ def show_solutions(request):
 
 
 def show_solution(request, solution_id):
-    solution = Solution.objects.filter (pk = solution_id)
-    if len(solution) == 0:
+    solutions = Solution.objects.filter (pk = solution_id)
+    if len(solutions) == 0:
         return redirect ("/show_solutions")
-    if (not request.user.is_staff) and (solution[0].user != request.user):
+    if (not request.user.is_staff) and (solutions[0].user != request.user):
         messages.warning(request, u'Brak uprawnień')
         return redirect ("/show_solutions")
-    if solution[0].status != COMPILATION_ERROR:
-        return render(request, 'show_solution.html', {
-                                                      'solution': solution[0],
-                                                      'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
-                                                      'results': json.loads(solution[0].results),
-                                                      'cerr': 0
-                                                      })
-    else:
-        return render(request, 'show_solution.html', {
-                                                      'solution': solution[0],
-                                                      'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
-                                                      'results': mark_safe(escape(solution[0].results).replace('\n', '<br>')),
-                                                      'cerr': 1
-                                                      })
+    sol = solutions[0]
+    return render(request, 'show_solution.html', {
+                                                  'solution': sol,
+                                                  #'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
+                                                  'results': json.loads(sol.results) if sol.results else '',
+                                                  })
 
 @user_passes_test(logged_in)
 def show_query(request):
