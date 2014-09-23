@@ -135,10 +135,14 @@ def signup(request):
     data = form.cleaned_data
     try:
         User.objects.get(username=data['username'])
-        form.add_error('username', 'Istnieje już taki użytkownik')
+        form.add_error('username', u'Nazwa użytkownika zajęta')
         return render(request, 'signup.html', {'form': form})
     except:
         pass
+    
+    if len(User.objects.filter(email=data['email'])) > 0:
+        form.add_error('email', u'Adres email jest już używany')
+        return render(request, 'signup.html', {'form': form})
 
     if data['pass1'] != data['pass2']:
         form.add_error('pass1', 'Hasła nie zgadzają się')
