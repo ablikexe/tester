@@ -185,13 +185,13 @@ def logout(request):
 
 @user_passes_test(logged_in)
 def test(request, task_id):
-    if request.method != 'POST':
-        return render(request, 'show_task.html', {'task_id': task_id})
-
     task = Task.objects.filter(pk=task_id)
     if len(task) == 0:
         messages.warning(request, 'Nieznane zadanie')
         return redirect('/')
+    
+    if request.method != 'POST':
+        return redirect('/task/%s' % task[0].clear_name)
 
     code = request.POST['code']
     sol = Solution(code=code.encode('utf-8'), user=request.user, task=task[0], date=timezone.now())

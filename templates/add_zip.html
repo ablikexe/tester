@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Dodaj paczkę testów - {{ task.name }}{% endblock %}
+
+{% block content %}
+    <h2>Dodaj paczkę testów - {{ task.name }}</h2>
+    <p>
+        Paczka powinna składać się z plików o nazwach <i>nazwa_testu</i>.in i <i>nazwa_testu</i>.out, oraz opcjonalnie
+        pliku <i>info</i>, w którym w kolejnych wierszach powinny się znajdować wartości:<br>
+        <i>nazwa_testu</i> <i>limit_czasowy</i> <i>liczba punktów</i>.
+    </p>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        Paczka w formacie zip: <input type="file" name="zip"><br>
+        <button>Dodaj paczkę</button>
+    </form>
+{% endblock %}
