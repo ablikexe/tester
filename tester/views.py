@@ -88,7 +88,7 @@ def testall():
             taskevent.clear()
             taskevent.wait ()
         else:
-            print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
+            #print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
             judge(q[0].solution)
             q[0].delete ()
 
