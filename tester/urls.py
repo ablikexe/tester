@@ -23,5 +23,6 @@ urlpatterns = patterns(
     url(r'^test/(?P<task_id>[0-9]+)', 'tester.views.test'),
     url(r'^task/(?P<clear_name>[a-z0-9\-]+)', 'tester.views.show_task'),
     url(r'^download_test/(?P<test_id>[0-9]+)', 'tester.views.download_test'),
+    url(r'^top', 'tester.views.top'),
     url(r'^$', 'tester.views.show_tasks'),
 )

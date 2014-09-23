@@ -496,3 +496,15 @@ def remove_task(request, task_id):
         messages.success(request, u'Zadanie "%s" usunięte!' % t[0].name)
         t[0].delete()
     return redirect('/manage_tasks')
+
+def top(request):
+    users = User.objects.all()
+    solutions = Solution.objects.all()
+    tasks = Task.objects.all()
+    res = {user: {} for user in users}
+    for sol in solutions:
+        res[sol.user][sol.task] = max(res[sol.user].get(sol.task, 0), sol.points)
+    top = sorted([(sum(res[user].values()), user) for user in users], reverse=True)
+    while top[-1][0] == 0:
+        top.pop()
+    return render(request, 'top.html', {'top': top[:3]})
