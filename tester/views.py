@@ -42,12 +42,13 @@ def judge(sol):
     res, total = [], 0
     memlimits = ['ulimit', '-v', str(task.memlimit*1000000), '&&',
                  'ulimit', '-Ss', 'unlimited', '&&']
+    devnull = open('/dev/null', 'w')
     for test in tests:
         test_path = os.path.join(TASKS_DIR, task.clear_name, 'tests', test.name)
         timelimit = ['ulimit', '-t', str(test.timelimit//1000+1), '&&']
         beg = time.time()
         command = memlimits + timelimit + ['./supervisor', '-q', './sol']
-        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'), stderr=sp.PIPE, shell=True)
+        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'), stderr=devnull, shell=True)
         def kill():
             try:
                 os.killpg(p.pid, signal.SIGKILL)
@@ -66,7 +67,7 @@ def judge(sol):
             status, points = u'Błąd wykonania', 0
         else:
             try:
-                sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path], stdout=sp.PIPE)
+                sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path], stdout=devnull)
                 status, points = u'OK', test.points
             except sp.CalledProcessError:
                 status, points = u'Zła odpowiedź', 0
