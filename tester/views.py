@@ -203,7 +203,7 @@ def test(request, task_id):
     if not testthread.isAlive():
         testthread.start()
 
-    return redirect('/')
+    return redirect('/show_solution/%d' % sol.id)
 
 
 @user_passes_test(logged_in)
