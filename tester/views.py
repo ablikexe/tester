@@ -44,8 +44,9 @@ def judge(sol):
     memlimits = ['ulimit', '-v', str(task.memlimit*1000000), '&&',
                  'ulimit', '-Ss', 'unlimited', '&&']
     devnull = open('/dev/null', 'w')
+    tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
     for test in tests:
-        test_path = os.path.join(TASKS_DIR, task.clear_name, 'tests', test.name)
+        test_path = os.path.join(tests_path, test.name)
         timelimit = ['ulimit', '-t', str(test.timelimit//1000+1), '&&']
         beg = time.time()
         command = memlimits + timelimit + ['./supervisor', '-q', './sol']
@@ -68,7 +69,10 @@ def judge(sol):
             status, points = u'Błąd wykonania', 0
         else:
             try:
-                sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path], stdout=devnull)
+                if os.path.exists(os.path.join(tests_path, 'checker')):
+                    sp.check_call('%s/checker %s.in out' % (tests_path, test_path), shell=True)
+                else:
+                    sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path], stdout=devnull)
                 status, points = u'OK', test.points
             except sp.CalledProcessError:
                 status, points = u'Zła odpowiedź', 0
