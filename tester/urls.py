@@ -10,6 +10,7 @@ urlpatterns = patterns(
     url(r'^signup', 'tester.views.signup'),
     url(r'^logout', 'tester.views.logout'),
     url(r'^add_task', 'tester.views.add_task'),
+    url(r'^settings', 'tester.views.settings'),
     url(r'^manage_tasks', 'tester.views.manage_tasks'),
     url(r'^manage_task/(?P<task_id>[0-9]+)$', 'tester.views.manage_task'),
     url(r'^manage_task/(?P<task_id>[0-9]+)/tests$', 'tester.views.manage_tests'),

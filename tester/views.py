@@ -253,6 +253,30 @@ def show_solution(request, solution_id):
 def show_query(request):
     return render(request, 'show_query.html', {'query': Query.objects.all()})
 
+@user_passes_test(logged_in)
+def settings(request):
+    if request.method != 'POST':
+        return render(request, 'settings.html', {'form': SettingsForm ()})
+
+    form = SettingsForm (request.POST)
+    if not form.is_valid():
+        return render(request, 'settings.html', {'form': form})
+    data = form.cleaned_data
+
+    user = auth.authenticate (username=request.user.username, password=data['password'])
+    if user is None:
+        form.add_error ('password', 'Nieprawidłowe hasło')
+        return render (request, 'settings.html', {'form': form})
+
+    if data['npass1'] != '':
+        if data['npass1'] != data['npass2']:
+            form.add_error ('npass1', 'Hasła różnią się')
+            return render (request, 'settings.html', {'form': form})
+        user.set_password(data['npass1'])
+        user.save ()
+        messages.success (request, 'Hasło zmieniono pomyślnie')
+        return redirect ('/')
+    return redirect ('/')
 
 @user_passes_test(is_admin)
 def add_task(request):

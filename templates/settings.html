@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %} Ustawienia konta {% endblock %}
+
+{% block content %}
+    <h2>Ustawienia Konta</h2>
+    <form method='POST'>
+        {% csrf_token %}
+            <table class="table table-stripped">
+                {{form}}
+            </table>
+        <div style="text-align: right;"> <button>Zmień dane</button> </div>
+    </form>
+
+{%endblock%}
