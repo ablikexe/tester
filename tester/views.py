@@ -255,8 +255,17 @@ def show_query(request):
 
 @user_passes_test(logged_in)
 def settings(request):
+    if len(UserData.objects.filter(user=request.user)) == 0:
+        userd = UserData ()
+        userd.user = request.user
+        userd.save ()
+
+    init={'email': request.user.email, 'ranking': request.user.userdata.ranking}
+    if init['email'] is None:
+        init['email'] = ''
+
     if request.method != 'POST':
-        return render(request, 'settings.html', {'form': SettingsForm ()})
+        return render(request, 'settings.html', {'form': SettingsForm (initial=init)})
 
     form = SettingsForm (request.POST)
     if not form.is_valid():
@@ -274,8 +283,18 @@ def settings(request):
             return render (request, 'settings.html', {'form': form})
         user.set_password(data['npass1'])
         user.save ()
-        messages.success (request, 'Hasło zmieniono pomyślnie')
-        return redirect ('/')
+        messages.success (request, ' zmieniono hasło')
+
+    if data['email'] != init['email']:
+        user.email=data['email']
+        user.save ()
+        messages.success (request, 'zmieniono adres email')
+
+    if data['ranking'] != init['ranking']:
+        user.userdata.ranking = data['ranking']
+        user.userdata.save ()
+        messages.success (request, 'zmiono ustawienia rankingu')
+
     return redirect ('/')
 
 @user_passes_test(is_admin)
@@ -523,13 +542,13 @@ def remove_task(request, task_id):
     return redirect('/manage_tasks')
 
 def top(request):
-    users = User.objects.all()
+    users = User.objects.filter(userdata__ranking=True)
     solutions = Solution.objects.all()
     tasks = Task.objects.all()
     res = {user: {} for user in users}
     for sol in solutions:
         res[sol.user][sol.task] = max(res[sol.user].get(sol.task, 0), sol.points)
     top = sorted([(sum(res[user].values()), user) for user in users], reverse=True)
-    while top[-1][0] == 0:
-        top.pop()
+#    while len(top) != 0 and top[-1][0] == 0:
+#        top.pop()
     return render(request, 'top.html', {'top': top[:3]})
