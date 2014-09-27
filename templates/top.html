@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Najlepsi użytkownicy{% endblock %}
+{% block title %}Ranking{% endblock %}
 
 {% block content %}
-    <h2>Najlepsi użytkownicy</h2>
+    <h2>Ranking</h2>
     <table class="table table-striped">
         <tr>
             <td>Nazwa użytkownika</td>
             <td>Suma zdobytych punktów</td>
         </tr>
-        {% for points, user in top %}
-            <tr>
+        {% for points, me, user in top %}
+            <tr {% if me %}style='font-weight: bold'{% endif %}>
                 <td>{{ user }}</td>
                 <td>{{ points }}</td>
             </tr>

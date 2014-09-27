@@ -155,7 +155,8 @@ def signup(request):
         form.add_error('pass1', u'Hasła nie zgadzają się')
         return render(request, 'signup.html', {'form': form})
 
-    User.objects.create_user(data['username'], data['email'], data['pass1'])
+    user = User.objects.create_user(data['username'], data['email'], data['pass1'])
+    UserData(user=user).save()
     messages.success(request, u'Użytkownik utworzony pomyślnie')
     logging.info ('user %s created' % (data['username']))
     return redirect("login.html")
@@ -283,17 +284,17 @@ def settings(request):
             return render (request, 'settings.html', {'form': form})
         user.set_password(data['npass1'])
         user.save ()
-        messages.success (request, ' zmieniono hasło')
+        messages.success (request, 'Zmieniono hasło')
 
     if data['email'] != init['email']:
         user.email=data['email']
         user.save ()
-        messages.success (request, 'zmieniono adres email')
+        messages.success (request, 'Zmieniono adres email')
 
     if data['ranking'] != init['ranking']:
         user.userdata.ranking = data['ranking']
         user.userdata.save ()
-        messages.success (request, 'zmiono ustawienia rankingu')
+        messages.success (request, 'Zmieniono ustawienia rankingu')
 
     return redirect ('/')
 
@@ -548,7 +549,7 @@ def top(request):
     res = {user: {} for user in users}
     for sol in solutions:
         res[sol.user][sol.task] = max(res[sol.user].get(sol.task, 0), sol.points)
-    top = sorted([(sum(res[user].values()), user) for user in users if user.userdata.ranking], reverse=True)
-#    while len(top) != 0 and top[-1][0] == 0:
-#        top.pop()
-    return render(request, 'top.html', {'top': top[:3]})
+    top = sorted([(sum(res[user].values()), user) for user in users if (not user.is_staff) and user.userdata.ranking], reverse=True)
+    while len(top) != 0 and top[-1][0] == 0:
+        top.pop()
+    return render(request, 'top.html', {'top': top})
