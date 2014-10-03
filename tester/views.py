@@ -155,7 +155,8 @@ def signup(request):
         form.add_error('pass1', u'Hasła nie zgadzają się')
         return render(request, 'signup.html', {'form': form})
 
-    User.objects.create_user(data['username'], data['email'], data['pass1'])
+    user = User.objects.create_user(data['username'], data['email'], data['pass1'])
+    UserData(user=user).save()
     messages.success(request, u'Użytkownik utworzony pomyślnie')
     logging.info ('user %s created' % (data['username']))
     return redirect("login.html")
@@ -253,6 +254,49 @@ def show_solution(request, solution_id):
 def show_query(request):
     return render(request, 'show_query.html', {'query': Query.objects.all()})
 
+@user_passes_test(logged_in)
+def settings(request):
+    if len(UserData.objects.filter(user=request.user)) == 0:
+        userd = UserData ()
+        userd.user = request.user
+        userd.save ()
+
+    init={'email': request.user.email, 'ranking': request.user.userdata.ranking}
+    if init['email'] is None:
+        init['email'] = ''
+
+    if request.method != 'POST':
+        return render(request, 'settings.html', {'form': SettingsForm (initial=init)})
+
+    form = SettingsForm (request.POST)
+    if not form.is_valid():
+        return render(request, 'settings.html', {'form': form})
+    data = form.cleaned_data
+
+    user = auth.authenticate (username=request.user.username, password=data['password'])
+    if user is None:
+        form.add_error ('password', 'Nieprawidłowe hasło')
+        return render (request, 'settings.html', {'form': form})
+
+    if data['npass1'] != '':
+        if data['npass1'] != data['npass2']:
+            form.add_error ('npass1', 'Hasła różnią się')
+            return render (request, 'settings.html', {'form': form})
+        user.set_password(data['npass1'])
+        user.save ()
+        messages.success (request, 'Zmieniono hasło')
+
+    if data['email'] != init['email']:
+        user.email=data['email']
+        user.save ()
+        messages.success (request, 'Zmieniono adres email')
+
+    if data['ranking'] != init['ranking']:
+        user.userdata.ranking = data['ranking']
+        user.userdata.save ()
+        messages.success (request, 'Zmieniono ustawienia rankingu')
+
+    return redirect ('/')
 
 @user_passes_test(is_admin)
 def add_task(request):
@@ -499,13 +543,13 @@ def remove_task(request, task_id):
     return redirect('/manage_tasks')
 
 def top(request):
-    users = User.objects.all()
+    users = User.objects.filter()
     solutions = Solution.objects.all()
     tasks = Task.objects.all()
     res = {user: {} for user in users}
     for sol in solutions:
         res[sol.user][sol.task] = max(res[sol.user].get(sol.task, 0), sol.points)
-    top = sorted([(sum(res[user].values()), user) for user in users], reverse=True)
-    while top[-1][0] == 0:
+    top = sorted([(sum(res[user].values()), user) for user in users if (not user.is_staff) and user.userdata.ranking], reverse=True)
+    while len(top) != 0 and top[-1][0] == 0:
         top.pop()
-    return render(request, 'top.html', {'top': top[:3]})
+    return render(request, 'top.html', {'top': top})

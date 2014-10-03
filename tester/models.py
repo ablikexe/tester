@@ -37,3 +37,8 @@ class Solution(models.Model):
 
 class Query(models.Model):
     solution = models.ForeignKey(Solution)
+
+class UserData(models.Model):
+    user = models.OneToOneField(User)
+    ranking = models.BooleanField(default=0)
+

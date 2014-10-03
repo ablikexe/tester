@@ -62,3 +62,11 @@ class SignupForm(forms.Form):
     email = forms.EmailField(label=u'Adres e-mail')
     pass1 = forms.CharField(label=u'Hasło', widget=forms.PasswordInput)
     pass2 = forms.CharField(label=u'Powtórz hasło', widget=forms.PasswordInput)
+
+class SettingsForm(forms.Form):
+    password = forms.CharField(label=u'Aktualne hasło', widget=forms.PasswordInput, required=True)
+    npass1 = forms.CharField(label=u'Nowe hasło', widget=forms.PasswordInput, required=False)
+    npass2 = forms.CharField(label=u'Powtórz nowe hasło', widget=forms.PasswordInput, required=False);
+    email = forms.EmailField(label=u'Adres e-mail', required=False)
+    ranking = forms.BooleanField(label=u'Wdioczność w rankingu', required=False, widget=forms.CheckboxInput)
+
