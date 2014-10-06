@@ -3,7 +3,7 @@
 {% block title %}Rozwiązanie {{solution.task.name}}{% endblock %}
 
 {% block content %}
-    <h2 style='text-align: center'>Rozwiązanie - {{solution.task.name}}</h2>
+    <h2 style='text-align: center'>Rozwiązanie - <a href='/task/{{solution.task.clear_name}}'>{{solution.task.name}}</a></h2>
     <h4 style='text-align: right'>{{solution.user.username}} - {{solution.date}}</h4>
     <div>
     	{% ifequal solution.status 0 %}
@@ -16,7 +16,7 @@
 	        <h4 style='color: #f00'>Błąd kompilacji!</h4>
             <pre>{{ results }}</pre>
 	    {% endifequal %}
-        {% ifequal solution.status 2 %}
+        {% if solution.status in processed_statuses %}
             Wynik: {{ solution.points }}.<br>
             <table class="table table-striped">
                 <tr>
@@ -33,9 +33,38 @@
                     </tr>
                 {% endfor %}
             </table>
-	    {% endifequal %}
+	    {% endif %}
     </div>
     <!-- <code style="display: block; width: 100%; min-height: 75%;">{{ codehtml }}</code> -->
     <h4>Kod źródłowy:</h4>
     <pre>{{ solution.code }}</pre>
+    <div id='spacer' style='height: 5%'></div>
+    {% ifequal user solution.user %}
+        <form method='POST'>
+            {% csrf_token %}
+            <table class='table'>
+                {{ form }}
+            </table>
+            <button>Zastosuj</button>
+        </form>
+    {% endifequal %}
+    <div id='comments' class='container'>
+        <table class='table table-striped'>
+            {% for comment in comments %}
+                <tr>
+                    <td><b>{{ comment.author }}</b></td>
+                    <td style='white-space: pre-line; width: 70%;'>{{ comment.content }}</td>
+                    <td style='color: grey'>{{ comment.date }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+        Dodaj komentarz:
+        <form action='/add_comment' method='POST'>
+            {% csrf_token %}
+            <input type='hidden' name='solution' value='{{ solution.id }}'>
+            <textarea name='comment' style='width: 100%; min-height: 10%; border-radius: 10px; margin-bottom: 10px;'></textarea>
+            <div class='right'><button>Dodaj komentarz</button></div>
+        </form>
+    </div>
+    <div id='footer' style='height: 5%'></div>
 {% endblock %}

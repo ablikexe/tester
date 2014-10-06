@@ -70,3 +70,7 @@ class SettingsForm(forms.Form):
     email = forms.EmailField(label=u'Adres e-mail', required=False)
     ranking = forms.BooleanField(label=u'Wdioczność w rankingu', required=False, widget=forms.CheckboxInput)
 
+class SolutionSettingsForm(forms.Form):
+    description = forms.CharField(label=u'Krótki opis rozwiązania (opcjonalny)', required=False, max_length=100)
+    published = forms.BooleanField(label=u'Opublikuj', required=False)
+    need_help = forms.BooleanField(label=u'Poproś o pomoc administratorów/twórcę zadania', required=False)

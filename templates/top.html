@@ -9,8 +9,8 @@
             <td>Nazwa użytkownika</td>
             <td>Suma zdobytych punktów</td>
         </tr>
-        {% for points, me, user in top %}
-            <tr {% if me %}style='font-weight: bold'{% endif %}>
+        {% for points, user in top %}
+            <tr {% ifequal user me %}style='font-weight: bold'{% endifequal %}>
                 <td>{{ user }}</td>
                 <td>{{ points }}</td>
             </tr>

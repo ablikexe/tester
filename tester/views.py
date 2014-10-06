@@ -1,5 +1,5 @@
 # coding: utf8
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from tester.models import *
@@ -45,28 +45,36 @@ def judge(sol):
                  'ulimit', '-Ss', 'unlimited', '&&']
     devnull = open('/dev/null', 'w')
     tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
+    sol.status = CORRECT
     for test in tests:
         test_path = os.path.join(tests_path, test.name)
-        timelimit = ['ulimit', '-t', str(test.timelimit//1000+1), '&&']
+        timelimit = ['ulimit', '-t', str((test.timelimit+999)//1000), '&&']
+        #command = memlimits + timelimit + ['./supervisor', '-q', './sol']
+        command = memlimits + timelimit + ['./sol']     # DANGEROUS!!!
         beg = time.time()
-        command = memlimits + timelimit + ['./supervisor', '-q', './sol']
-        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'), stderr=devnull, shell=True)
+        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'), stderr=sp.PIPE, shell=True)
         def kill():
-            try:
-                os.killpg(p.pid, signal.SIGKILL)
-            except:
-                pass
-        kill_timer = Timer(0.003*test.timelimit, kill)
+            p.kill()
+        kill_timer = Timer(0.001*test.timelimit, kill)
         kill_timer.start()
         p.wait()
+        #out, err = p.communicate()
+        #print out, err
         if kill_timer:
             kill_timer.cancel()
-        t = 1000*(time.time() - beg)
+            t = 1000*(time.time() - beg)
+        else:
+            t = test.timelimit + 1000
         if t > test.timelimit:
             status, points = u'Przekroczono limit czasu', 0
+            if sol.status == CORRECT:
+                sol.status = TIME_LIMIT_EXCEEDED
+            print 'TLE, real running time: %.3lf / %.3lf' % (t, test.timelimit)
             t = -1
         elif p.returncode != 0:
             status, points = u'Błąd wykonania', 0
+            if sol.status == CORRECT:
+                sol.status = RUNTIME_ERROR
         else:
             try:
                 if os.path.exists(os.path.join(tests_path, 'checker')):
@@ -76,11 +84,12 @@ def judge(sol):
                 status, points = u'OK', test.points
             except sp.CalledProcessError:
                 status, points = u'Zła odpowiedź', 0
+                if sol.status == CORRECT:
+                    sol.status = WRONG_ANSWER
         res.append((test.name, status, (('%.3fs' % (0.001*t)) if t>=0 else '?') + (' / %.3fs' % (0.001*test.timelimit)),
                     '%d/%d' % (points, test.points)))
         total += points
 
-    sol.status = PROCESSED
     sol.results = json.dumps(res)
     sol.points = total
     sol.save()
@@ -120,15 +129,13 @@ def save_file(file, path):
 
 
 def show_tasks(request):
+    create_userdata()   # only to migrate! DELETE LATER
     return render(request, 'show_tasks.html', {'tasks': Task.objects.all()})
 
 
 def show_task(request, clear_name):
-    tasks = Task.objects.filter(clear_name=clear_name)
-    if len(tasks) == 0:
-        messages.warning(request, 'Nieznane zadanie!')
-        return redirect('/')
-    return render(request, 'show_task.html', {'task': tasks[0], 'task_id': tasks[0].pk})
+    task = get_object_or_404(Task, clear_name=clear_name)
+    return render(request, 'show_task.html', {'task': task, 'comments': Comment.objects.filter(task=task)})
 
 
 def signup(request):
@@ -192,16 +199,13 @@ def logout(request):
 
 @user_passes_test(logged_in)
 def test(request, task_id):
-    task = Task.objects.filter(pk=task_id)
-    if len(task) == 0:
-        messages.warning(request, 'Nieznane zadanie')
-        return redirect('/')
-    
+    task = get_object_or_404(Task, pk=task_id)
+
     if request.method != 'POST':
-        return redirect('/task/%s' % task[0].clear_name)
+        return redirect('/task/%s' % task.clear_name)
 
     code = request.POST['code']
-    sol = Solution(code=code.encode('utf-8'), user=request.user, task=task[0], date=timezone.now())
+    sol = Solution(code=code.encode('utf-8'), user=request.user, task=task, date=timezone.now())
     sol.save()
     logging.info ('solution [%d]  %s submitted by %s' % (sol.pk, sol.task.name, sol.user.username))
     que = Query(solution=sol)
@@ -209,12 +213,15 @@ def test(request, task_id):
     
     taskevent.set()
     if not testthread.isAlive():
-        testthread.start()
+        try:
+            testthread.start()
+        except:
+            pass
 
     return redirect('/show_solution/%d' % sol.id)
 
 
-@user_passes_test(logged_in)
+@user_passes_test(is_admin)
 def download_test(request, test_id):
     test = Test.objects.filter(pk=test_id)
     if len(test) == 0:
@@ -235,32 +242,48 @@ def show_solutions(request):
         solutions = Solution.objects.filter(user=request.user)
     return render(request, 'show_solutions.html', {'solutions': reversed(solutions)})
 
+@user_passes_test(logged_in)
+def show_published(request):
+    solutions = Solution.objects.filter(published=True)
+    return render(request, 'show_published.html', {'solutions': reversed(solutions)})
 
 def show_solution(request, solution_id):
-    solutions = Solution.objects.filter (pk = solution_id)
-    if len(solutions) == 0:
-        return redirect ("/show_solutions")
-    if (not request.user.is_staff) and (solutions[0].user != request.user):
+    sol = get_object_or_404(Solution, pk=int(solution_id))
+    if (not request.user.is_staff) and (not sol.published) and (sol.user != request.user):
         messages.warning(request, u'Brak uprawnień')
         return redirect ("/show_solutions")
-    sol = solutions[0]
-    return render(request, 'show_solution.html', {
-                                                  'solution': sol,
-                                                  #'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
-                                                  'results': json.loads(sol.results) if sol.results else '',
-                                                  })
+    data = {}
+    data['solution'] = sol
+    data['results'] = json.loads(sol.results) if sol.results else ''
+    #'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
+    data['comments'] = Comment.objects.filter(solution=sol)
+    data['processed_statuses'] = PROCESSED_STATUSES
+    if request.method != 'POST':
+        data['form'] = SolutionSettingsForm(initial=sol.__dict__)
+        return render(request, 'show_solution.html', data)
+    form = SolutionSettingsForm(request.POST)
+    if not form.is_valid():
+        data['form'] = form
+        return render(request, 'show_solution.html', data)
+    for field in ("published", "description", "need_help"):
+        setattr(sol, field, form.cleaned_data[field])
+        print 'sol.%s = %s' % (field, form.cleaned_data[field])
+    sol.save()
+    messages.success(request, "Zastosowano zmiany")
+    return redirect('/show_solution/%s' % solution_id)
 
 @user_passes_test(logged_in)
 def show_query(request):
     return render(request, 'show_query.html', {'query': Query.objects.all()})
 
+def create_userdata():
+    users = User.objects.all()
+    for user in users:
+        if UserData.objects.filter(user=user).count() == 0:
+            UserData(user=user).save()
+
 @user_passes_test(logged_in)
 def settings(request):
-    if len(UserData.objects.filter(user=request.user)) == 0:
-        userd = UserData ()
-        userd.user = request.user
-        userd.save ()
-
     init={'email': request.user.email, 'ranking': request.user.userdata.ranking}
     if init['email'] is None:
         init['email'] = ''
@@ -337,14 +360,10 @@ def manage_tasks(request):
 
 @user_passes_test(is_admin)
 def manage_task(request, task_id):
-    tasks = Task.objects.filter(pk=int(task_id))
-    if len(tasks) == 0:
-        messages.warning(request, 'Nieznane zadanie!')
-        return redirect('/manage_tasks')
-
-    task = tasks[0]
+    task = get_object_or_404(Task, pk=int(task_id))
+    
     if request.method != 'POST':
-        initial = tasks[0].__dict__
+        initial = task.__dict__
         form = ChangeTaskForm(initial=initial)
         return render(request, 'manage_task.html', {'task': task, 'form': form})
 
@@ -431,7 +450,7 @@ def manage_tests(request, task_id):
             test.save()
 
     messages.success(request, 'Zmiany zastosowane')
-    logging.info ('tests for task [%d] %s modyfied by %s' % (task.pk, task.name, request.user.username))
+    logging.info ('tests for task [%d] %s modified by %s' % (task.pk, task.name, request.user.username))
     return redirect('/manage_task/%d/tests' % task.id)
 
 @user_passes_test(is_admin)
@@ -452,7 +471,7 @@ def add_test(request, task_id):
     data = form.cleaned_data
     tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
     if not os.path.exists(tests_path):
-        os.system('mkdir %s' % tests_path)  # zakładam że nie istnieje tylko folder "tests"
+        os.system('mkdir -p %s' % tests_path)
 
     name = clear(data['name'])
     if len(Test.objects.filter(name=name)) > 0:
@@ -473,6 +492,7 @@ def add_test(request, task_id):
     return redirect('/manage_task/%d/tests' % task.id)
 
 
+@user_passes_test(is_admin)
 def add_zip(request, task_id):
     tasks = Task.objects.filter(pk=int(task_id))
     if len(tasks) == 0:
@@ -485,7 +505,7 @@ def add_zip(request, task_id):
 
     tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
     if not os.path.exists(tests_path):
-        os.system('mkdir %s' % tests_path)  # zakładam że nie istnieje tylko folder "tests"
+        os.system('mkdir -p %s' % tests_path)
 
     created = 0
     save_file(request.FILES['zip'], 'pack.zip')
@@ -509,7 +529,7 @@ def add_zip(request, task_id):
             rem_tasks = len(names) // 2
             for name in names:
                 if len(name) < 3 or name[-3:] != '.in':
-                    continue
+                   continue
                 name = name[:-3]
                 if len(Test.objects.filter(task=task, name=name)) > 0:
                     t = Test.objects.filter(task=task, name=name)[0]
@@ -543,13 +563,59 @@ def remove_task(request, task_id):
     return redirect('/manage_tasks')
 
 def top(request):
-    users = User.objects.filter()
+    users = User.objects.all()
     solutions = Solution.objects.all()
-    tasks = Task.objects.all()
     res = {user: {} for user in users}
     for sol in solutions:
         res[sol.user][sol.task] = max(res[sol.user].get(sol.task, 0), sol.points)
     top = sorted([(sum(res[user].values()), user) for user in users if (not user.is_staff) and user.userdata.ranking], reverse=True)
     while len(top) != 0 and top[-1][0] == 0:
         top.pop()
-    return render(request, 'top.html', {'top': top})
+    return render(request, 'top.html', {'top': top, 'me': request.user})
+
+def ask_for_help(request):
+    sol = get_object_or_404(Solution, id=int(request.POST['sol_id']))
+    if sol.user != request.user:
+        return redirect('/show_solution/%s' % request.POST['sol_id'])
+    sol.need_help = True
+    sol.save()
+    messages.success(request, 'Prośba o pomoc zapisana. Żeby ułatwić pracę administratorowi, opisz w komentarzu pod rozwiązaniem na czym dokładnie polega problem.')
+    return redirect('/show_solution/%s' % request.POST['sol_id'])
+
+def cancel_help(request):
+    sol = get_object_or_404(Solution, id=int(request.POST['sol_id']))
+    if sol.user != request.user:
+        return redirect('/show_solution/%s' % request.POST['sol_id'])
+    sol.need_help = False
+    sol.save()
+    messages.success(request, 'Prośba o pomoc anulowana.')
+    return redirect('/show_solution/%s' % request.POST['sol_id'])
+
+@user_passes_test(logged_in)
+def add_comment(request):
+    data = {'author': request.user, 'content': request.POST['comment']}
+    if 'solution' in request.POST:
+        sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
+        if sol.user != request.user and (not request.user.is_staff) and (not sol.published):
+            messaged.warning(request, 'Chyba nie powinieneś dodawać tu komentarza.')
+        data['solution'] = sol
+        res = redirect('/show_solution/%s' % request.POST['solution'])
+    else:
+        task = get_object_or_404(Task, pk=int(request.POST['task']))
+        data['task'] = task
+        res = redirect('/task/%s' % task.clear_name)
+    Comment(**data).save()
+    messages.success(request, 'Komentarz dodany!')
+    return res
+
+def publish(request, redir):
+    sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
+    sol.published = True
+    sol.save()
+    return redirect(redir)
+
+def unpublish(request, redir):
+    sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
+    sol.published = False
+    sol.save()
+    return redirect(redir)

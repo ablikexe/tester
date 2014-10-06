@@ -2,20 +2,32 @@
 
 {% block title %}Zgłoszenia{% endblock %}
 
+{% block head %}
+    <style>
+        .status_2 { background-color: #dfd; }
+        .status_3 { background-color: #f99; }
+        .status_4 { background-color: #fdd; }
+        .status_5 { background-color: #ffa; }
+        .status_6 { background-color: #aff; }
+    </style>
+{% endblock %}
+
 {% block content %}
     <h2>Zgłoszenia</h2>
-    <table class="table table-striped">
+    <table class="table">
         <tr style="font-weight: bold;">
             <td>Autor</td>
             <td>Zadanie</td>
+            <td>Opis</td>
             <td>Data</td>
             <td>Wynik</td>
             <td></td>
         </tr>
         {% for sol in solutions %}
-            <tr>
+            <tr class='status_{{ sol.status }}'>
                 <td>{{ sol.user.username }}</td>
                 <td><a href='/task/{{ sol.task.clear_name }}'>{{ sol.task.name }}</a></td>
+                <td>{{ sol.description }}</td>
                 <td>{{ sol.date }}</td>
                 <td>{{ sol.points }}</td>
                 <td><a href="/show_solution/{{ sol.pk }}">Szczegóły</a></td>
