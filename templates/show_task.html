@@ -30,7 +30,7 @@
     </div>
     <div style="margin-bottom: 20px">{{ task.description |safe }}</div>
     {% if user.is_authenticated %}
-        <form method='post' action='/test/{{task_id}}'>
+        <form method='post' action='/test/{{task.id}}'>
             {% csrf_token %}
             <input type='hidden' name='task' value='{{ task.clear_name }}'>
             <b>Rozwiązanie:</b><br>
@@ -40,4 +40,23 @@
     {% else %}
         <b>Musisz być zalogowany żeby wysyłać zgłoszenia.</b>
     {% endif %}
+    <div id='comments' class='container'>
+        <table class='table table-striped'>
+            {% for comment in comments %}
+                <tr>
+                    <td><b>{{ comment.author }}</b></td>
+                    <td style='white-space: pre-line; width: 70%;'>{{ comment.content }}</td>
+                    <td style='color: grey'>{{ comment.date }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+        Dodaj komentarz:
+        <form action='/add_comment' method='POST'>
+            {% csrf_token %}
+            <input type='hidden' name='task' value='{{ task.id }}'>
+            <textarea name='comment' style='width: 100%; min-height: 10%; border-radius: 10px; margin-bottom: 10px;'></textarea>
+            <div class='right'><button>Dodaj komentarz</button></div>
+        </form>
+    </div>
+    <div id='footer' style='height: 5%'></div>
 {% endblock %}

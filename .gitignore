@@ -16,6 +16,7 @@ sol
 .idea
 
 secret_key.py
+tester/migrations
 
 # C extensions
 *.so
