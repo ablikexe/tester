@@ -26,7 +26,9 @@
     <h2 style="text-align: center">{{ task.name }}</h2>
     <div style="width: 100%; text-align: right;">
         Autor: <b>{{ task.author }}</b><br>
-        Limit pamięci: <b>{{ task.memlimit }}MB</b>
+        Limit pamięci: <b>{{ task.memlimit }}MB</b><br>
+        <a href='/task/{{ task.clear_name }}/solutions'>Twoje rozwiązania</a><br>
+        <a href='/task/{{ task.clear_name }}/published'>Opublikowane rozwiązania</a>
     </div>
     <div style="margin-bottom: 20px">{{ task.description |safe }}</div>
     {% if user.is_authenticated %}
