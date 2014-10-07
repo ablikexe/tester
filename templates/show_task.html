@@ -47,6 +47,16 @@
                     <td><b>{{ comment.author }}</b></td>
                     <td style='white-space: pre-line; width: 70%;'>{{ comment.content }}</td>
                     <td style='color: grey'>{{ comment.date }}</td>
+                    {% ifequal comment.author user %}
+                        <td>
+                            <form action='/remove_comment' method='POST'>
+                                {% csrf_token %}
+                                <input type='hidden' name='comment' value='{{ comment.id }}'>
+                                <input type='hidden' name='task' value='{{ task.id }}'>
+                                <button>Usuń</button>
+                            </form>
+                        </td>
+                    {% endifequal %}
                 </tr>
             {% endfor %}
         </table>

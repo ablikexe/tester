@@ -2,6 +2,7 @@ tester
 ======
 Do zrobienia:
 
+    - usuwanie rozwiązań
     - rozwiązania użytkownika do danego zadania
     - opublikowane rozwiązania do danego zadania
     - [kolorowanie wyników na każdym teście]

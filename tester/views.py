@@ -234,12 +234,26 @@ def download_test(request, test_id):
     return response
 
 
+# powinno się zwinąć te cztery funkcje poniżej do jednej, ale nie mam pomysłu jak to ładnie zrobić
+# (pewnie coś trzeba zrobić z domyślnymi wartościami argumentów w urls.py)
 @user_passes_test(logged_in)
 def show_solutions(request):
     if request.user.is_staff:
-        solutions = Solution.objects.all ()
+        solutions = Solution.objects.all()
     else:
         solutions = Solution.objects.filter(user=request.user)
+    return render(request, 'show_solutions.html', {'solutions': reversed(solutions)})
+
+@user_passes_test(logged_in)
+def show_task_solutions(request, clear_name):
+    task = get_object_or_404(Task, clear_name=clear_name)
+    solutions = Solution.objects.filter(user=request.user, task=task)
+    return render(request, 'show_solutions.html', {'solutions': reversed(solutions)})
+
+@user_passes_test(logged_in)
+def show_published_task_solutions(request, clear_name):
+    task = get_object_or_404(Task, clear_name=clear_name)
+    solutions = Solution.objects.filter(task=task, published=True)
     return render(request, 'show_solutions.html', {'solutions': reversed(solutions)})
 
 @user_passes_test(logged_in)
@@ -568,28 +582,10 @@ def top(request):
     res = {user: {} for user in users}
     for sol in solutions:
         res[sol.user][sol.task] = max(res[sol.user].get(sol.task, 0), sol.points)
-    top = sorted([(sum(res[user].values()), user) for user in users if (not user.is_staff) and user.userdata.ranking], reverse=True)
-    while len(top) != 0 and top[-1][0] == 0:
+    top = sorted([(sum(res[user].values()), user) for user in users if user.userdata.ranking], reverse=True, key=lambda x: (x[0], x[1]==request.user))
+    while len(top) and top[-1][0] == 0:
         top.pop()
     return render(request, 'top.html', {'top': top, 'me': request.user})
-
-def ask_for_help(request):
-    sol = get_object_or_404(Solution, id=int(request.POST['sol_id']))
-    if sol.user != request.user:
-        return redirect('/show_solution/%s' % request.POST['sol_id'])
-    sol.need_help = True
-    sol.save()
-    messages.success(request, 'Prośba o pomoc zapisana. Żeby ułatwić pracę administratorowi, opisz w komentarzu pod rozwiązaniem na czym dokładnie polega problem.')
-    return redirect('/show_solution/%s' % request.POST['sol_id'])
-
-def cancel_help(request):
-    sol = get_object_or_404(Solution, id=int(request.POST['sol_id']))
-    if sol.user != request.user:
-        return redirect('/show_solution/%s' % request.POST['sol_id'])
-    sol.need_help = False
-    sol.save()
-    messages.success(request, 'Prośba o pomoc anulowana.')
-    return redirect('/show_solution/%s' % request.POST['sol_id'])
 
 @user_passes_test(logged_in)
 def add_comment(request):
@@ -598,6 +594,7 @@ def add_comment(request):
         sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
         if sol.user != request.user and (not request.user.is_staff) and (not sol.published):
             messaged.warning(request, 'Chyba nie powinieneś dodawać tu komentarza.')
+            return redirect('/show_solution/%s' % request.POST['solution'])
         data['solution'] = sol
         res = redirect('/show_solution/%s' % request.POST['solution'])
     else:
@@ -608,14 +605,16 @@ def add_comment(request):
     messages.success(request, 'Komentarz dodany!')
     return res
 
-def publish(request, redir):
-    sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
-    sol.published = True
-    sol.save()
-    return redirect(redir)
-
-def unpublish(request, redir):
-    sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
-    sol.published = False
-    sol.save()
-    return redirect(redir)
+@user_passes_test(logged_in)
+def remove_comment(request):
+    comment = get_object_or_404(Comment, pk=int(request.POST['comment']))
+    if comment.solution:
+        if comment.author != request.user and not request.user.is_staff:
+            messaged.warning(request, 'Pilnuj swoich komentarzy!')
+            return redirect('/show_solution/%s' % comment.solution)
+        res = redirect('/show_solution/%s' % comment.solution)
+    else:
+        res = redirect('/task/%s' % comment.task.clear_name)
+    comment.delete()
+    messages.success(request, 'Komentarz usunięty!')
+    return res
