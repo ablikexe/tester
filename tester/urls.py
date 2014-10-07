@@ -30,5 +30,6 @@ urlpatterns = patterns(
     url(r'^top', 'top'),
     url(r'^add_comment', 'add_comment'),
     url(r'^remove_comment', 'remove_comment'),
+    url(r'^remove_solution', 'remove_solution'),
     url(r'^$', 'show_tasks'),
 )

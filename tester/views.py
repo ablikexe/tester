@@ -286,6 +286,14 @@ def show_solution(request, solution_id):
     messages.success(request, "Zastosowano zmiany")
     return redirect('/show_solution/%s' % solution_id)
 
+def remove_solution(request):
+    sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
+    if sol.user != request.user:
+        return redirect('/show_solution/%d' % sol.id)
+    sol.delete()
+    messages.success(request, 'Zgłoszenie usunięte!')
+    return redirect('/show_solutions')
+
 @user_passes_test(logged_in)
 def show_query(request):
     return render(request, 'show_query.html', {'query': Query.objects.all()})

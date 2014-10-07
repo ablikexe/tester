@@ -68,6 +68,11 @@
                 </tr>
             {% endfor %}
         </table>
+        <form action='/remove_solution' method='POST' onsubmit='return confirm("Czy na pewno chcesz trwale usunąć to rozwiązanie?")'>
+            {% csrf_token %}
+            <input type='hidden' name='solution' value='{{ solution.id }}'>
+            <button>Usuń rozwiązanie</button>
+        </form>
         Dodaj komentarz:
         <form action='/add_comment' method='POST'>
             {% csrf_token %}
