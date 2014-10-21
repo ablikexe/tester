@@ -3,7 +3,6 @@ tester
 Do zrobienia:
 
     - [kolorowanie wyników na każdym teście]
-    - powiadomienia
 
 Do usprawnienia:
     

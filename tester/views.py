@@ -279,10 +279,12 @@ def show_solution(request, solution_id):
     if not form.is_valid():
         data['form'] = form
         return render(request, 'show_solution.html', data)
-    for field in ("published", "description", "need_help"):
+    sol.description = form.cleaned_data['description'].encode('utf-8')
+    for field in ("published", "need_help"):
         setattr(sol, field, form.cleaned_data[field])
-        print 'sol.%s = %s' % (field, form.cleaned_data[field])
     sol.save()
+    if sol.need_help:
+        Notification(to=User.objects.get(username='ablikexe'), content='<a href="/show_solution/%d">Rozwiązanie</a> potrzebuje pomocy.' % sol.id).save()
     messages.success(request, "Zastosowano zmiany")
     return redirect('/show_solution/%s' % solution_id)
 
@@ -604,6 +606,8 @@ def add_comment(request):
             messaged.warning(request, 'Chyba nie powinieneś dodawać tu komentarza.')
             return redirect('/show_solution/%s' % request.POST['solution'])
         data['solution'] = sol
+        if request.user != sol.user:
+            Notification(to=sol.user, content='Ktoś skomentował Twoje <a href="/show_solution/%d">rozwiązanie</a>!' % sol.id).save()
         res = redirect('/show_solution/%s' % request.POST['solution'])
     else:
         task = get_object_or_404(Task, pk=int(request.POST['task']))
@@ -626,3 +630,8 @@ def remove_comment(request):
     comment.delete()
     messages.success(request, 'Komentarz usunięty!')
     return res
+@user_passes_test(logged_in)
+def notifications(request):
+    notifications = Notification.objects.filter(to=request.user)
+    notifications.update(read=True)
+    return render(request, 'notifications.html', {'notifications': reversed(notifications)})
