@@ -28,51 +28,61 @@ def judge(sol):
     logging.info('judging solution [%d]' % (sol.pk))
     sol.status = PROCESSING
     sol.save()
+    
     with open('sol.cpp', 'w') as f:
         f.write(sol.code.encode('utf8'))
-    p = sp.Popen(['g++', 'sol.cpp', '-o', 'sol', '-static', '-lm', '-O2', '-std=c++11'], stderr=sp.PIPE)   # albo c++0x
-    _, err = p.communicate()
+    
+    p = sp.Popen(LANGUAGES[sol.language].split(), stderr=sp.PIPE, stdout=sp.PIPE)
+    out, err = p.communicate()
+    os.system('rm sol.cpp')
+    if sol.task.foreign:
+        sol.code = ''
+        sol.save()
+
     if p.returncode != 0:
         sol.status = COMPILATION_ERROR
-        sol.results = json.dumps(err)
+        sol.compilation_output = out + err
         sol.save()
         return
 
     task = sol.task
     tests = Test.objects.filter(task=task)
-    res, total = [], 0
+    total = 0
     memlimits = ['ulimit', '-v', str(task.memlimit*1000000), '&&',
                  'ulimit', '-Ss', 'unlimited', '&&']
     devnull = open('/dev/null', 'w')
     tests_path = os.path.join(TASKS_DIR, task.clear_name, 'tests')
     sol.status = CORRECT
+    
     for test in tests:
         test_path = os.path.join(tests_path, test.name)
         timelimit = ['ulimit', '-t', str((test.timelimit+999)//1000), '&&']
         #command = memlimits + timelimit + ['./supervisor', '-q', './sol']
-        command = memlimits + timelimit + ['./sol']     # DANGEROUS!!!
+        command = memlimits + timelimit + ['./sol']
+        
         beg = time.time()
-        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'), stdout=open('out', 'w'), stderr=sp.PIPE, shell=True)
+        p = sp.Popen(' '.join(command), stdin=open('%s.in' % test_path, 'r'),
+                     stdout=open('out', 'w'), stderr=sp.PIPE, shell=True)
         def kill():
             p.kill()
         kill_timer = Timer(0.001*test.timelimit, kill)
         kill_timer.start()
         p.wait()
-        #out, err = p.communicate()
-        #print out, err
+        
         if kill_timer:
             kill_timer.cancel()
             t = 1000*(time.time() - beg)
         else:
             t = test.timelimit + 1000
+
+        test_res = Result(solution=sol, test=test, status=UNKNOWN, points=0, time=t)
         if t > test.timelimit:
-            status, points = u'Przekroczono limit czasu', 0
+            test_res.status, test_res.time = TIME_LIMIT_EXCEEDED, -1
             if sol.status == CORRECT:
                 sol.status = TIME_LIMIT_EXCEEDED
-            print 'TLE, real running time: %.3lf / %.3lf' % (t, test.timelimit)
             t = -1
         elif p.returncode != 0:
-            status, points = u'Błąd wykonania', 0
+            test_res.status = RUNTIME_ERROR
             if sol.status == CORRECT:
                 sol.status = RUNTIME_ERROR
         else:
@@ -81,16 +91,15 @@ def judge(sol):
                     sp.check_call('%s/checker %s.in out' % (tests_path, test_path), shell=True)
                 else:
                     sp.check_call(['diff', '-wB', 'out', '%s.out' % test_path], stdout=devnull)
-                status, points = u'OK', test.points
+                test_res.status, test_res.points = CORRECT, test.points * min(1, (2 - 2*t/test.timelimit))
             except sp.CalledProcessError:
-                status, points = u'Zła odpowiedź', 0
+                test_res.status = WRONG_ANSWER
                 if sol.status == CORRECT:
                     sol.status = WRONG_ANSWER
-        res.append((test.name, status, (('%.3fs' % (0.001*t)) if t>=0 else '?') + (' / %.3fs' % (0.001*test.timelimit)),
-                    '%d/%d' % (points, test.points)))
-        total += points
-
-    sol.results = json.dumps(res)
+        test_res.status_description = STATUS_DESCRIPTION[test_res.status]
+        test_res.save()
+        total += test_res.points
+    
     sol.points = total
     sol.save()
 
@@ -100,13 +109,11 @@ def testall():
     while True:
         q = Query.objects.all()
         if len(q) == 0:
-            print ('no more solutions to check')
             taskevent.clear()
-            taskevent.wait ()
+            taskevent.wait()
         else:
-            #print ('checking solution %s %s %s' % (q[0].solution.task.name, q[0].solution.user.username, q[0].solution.date))
             judge(q[0].solution)
-            q[0].delete ()
+            q[0].delete()
 
 testthread = Thread(name='testing', target=testall)
 testthread.daemon = True
@@ -129,7 +136,6 @@ def save_file(file, path):
 
 
 def show_tasks(request):
-    create_userdata()   # only to migrate! DELETE LATER
     return render(request, 'show_tasks.html', {'tasks': Task.objects.all()})
 
 
@@ -205,9 +211,10 @@ def test(request, task_id):
         return redirect('/task/%s' % task.clear_name)
 
     code = request.POST['code']
-    sol = Solution(code=code.encode('utf-8'), user=request.user, task=task, date=timezone.now())
+    language = request.POST['language']
+    sol = Solution(code=code.encode('utf-8'), user=request.user, task=task, date=timezone.now(), language=language)
     sol.save()
-    logging.info ('solution [%d]  %s submitted by %s' % (sol.pk, sol.task.name, sol.user.username))
+    logging.info ('solution [%d] %s submitted by %s' % (sol.pk, sol.task.name, sol.user.username))
     que = Query(solution=sol)
     que.save()
     
@@ -268,10 +275,9 @@ def show_solution(request, solution_id):
         return redirect ("/show_solutions")
     data = {}
     data['solution'] = sol
-    data['results'] = json.loads(sol.results) if sol.results else ''
+    data['results'] = Result.objects.filter(solution=sol)
     #'codehtml': mark_safe(escape(solution[0].code).replace('\n', '<br>')),
     data['comments'] = Comment.objects.filter(solution=sol)
-    data['processed_statuses'] = PROCESSED_STATUSES
     if request.method != 'POST':
         data['form'] = SolutionSettingsForm(initial=sol.__dict__)
         return render(request, 'show_solution.html', data)
@@ -290,7 +296,7 @@ def show_solution(request, solution_id):
 
 def remove_solution(request):
     sol = get_object_or_404(Solution, pk=int(request.POST['solution']))
-    if sol.user != request.user:
+    if sol.user != request.user and not request.user.is_staff:
         return redirect('/show_solution/%d' % sol.id)
     sol.delete()
     messages.success(request, 'Zgłoszenie usunięte!')
@@ -299,12 +305,6 @@ def remove_solution(request):
 @user_passes_test(logged_in)
 def show_query(request):
     return render(request, 'show_query.html', {'query': Query.objects.all()})
-
-def create_userdata():
-    users = User.objects.all()
-    for user in users:
-        if UserData.objects.filter(user=user).count() == 0:
-            UserData(user=user).save()
 
 @user_passes_test(logged_in)
 def settings(request):
@@ -630,6 +630,7 @@ def remove_comment(request):
     comment.delete()
     messages.success(request, 'Komentarz usunięty!')
     return res
+
 @user_passes_test(logged_in)
 def notifications(request):
     notifications = Notification.objects.filter(to=request.user)

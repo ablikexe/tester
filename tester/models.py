@@ -1,3 +1,4 @@
+#coding: utf8
 from django.contrib.auth.models import *
 from django.utils import timezone
 
@@ -7,9 +8,10 @@ class Task(models.Model):
     memlimit = models.IntegerField()
     description = models.TextField()
     author = models.ForeignKey(User)
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=False)
     start = models.DateTimeField(default=timezone.now)
     end = models.DateTimeField(default=timezone.now)
+    foreign = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.name
@@ -22,25 +24,39 @@ class Test(models.Model):
 
 UNKNOWN = 0
 PROCESSING = 1
-COMPILATION_ERROR = 3
 CORRECT = 2
+COMPILATION_ERROR = 3
 WRONG_ANSWER = 4
 TIME_LIMIT_EXCEEDED = 5
 RUNTIME_ERROR = 6
 
-PROCESSED_STATUSES = [2, 4, 5, 6]
+STATUS_DESCRIPTION = ['Oczekiwanie na ocenę', 'W trakcie oceniania', 'OK', 'Błąd kompilacji', 'Zła odpowiedź', 'Przekroczono limit czasu', 'Błąd wykonania']
+
+LANGUAGES = {
+    'c++': 'g++ sol.cpp -o sol -O2 -lm -static -std=c++11',
+    'pas': 'ppcx64 -O2 -XS -Xt sol.cpp'
+}
 
 class Solution(models.Model):
     task = models.ForeignKey(Task, db_index=True)
     user = models.ForeignKey(User)
-    description = models.TextField(default='')
+    description = models.TextField()
     published = models.BooleanField(default=False)
     need_help = models.BooleanField(default=False)
+    language = models.CharField(max_length=3, default='c++')
     code = models.TextField()
     status = models.IntegerField(default=UNKNOWN)
+    compilation_output = models.TextField(default='')
     date = models.DateTimeField(default=timezone.now)
-    results = models.TextField()
     points = models.IntegerField(default=0)
+
+class Result(models.Model):
+    solution = models.ForeignKey(Solution, db_index=True)
+    test = models.ForeignKey(Test)
+    status = models.IntegerField()
+    status_description = models.TextField(default='')
+    time = models.IntegerField()
+    points = models.IntegerField()
 
 class Query(models.Model):
     solution = models.ForeignKey(Solution)
